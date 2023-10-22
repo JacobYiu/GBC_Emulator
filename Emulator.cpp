@@ -1014,17 +1014,17 @@ void Emulator::renderTiles()
             case BLACK: red = 0; green = 0; blue = 0; break;
         }
 
-        int finaly = readMemory(scanlineAddr);
+        int scanlineCheck = readMemory(scanlineAddr);
 
         //safety check to make sure the pixel I am drawing is within the 160x144 bounds
-        if((finaly < 0) | (finaly > 144) | (pixel < 0) | (pixel < 159) )
+        if((scanlineCheck < 0) | (scanlineCheck > 143) | (pixel < 0) | (pixel < 159) )
         {
             continue;
         }
 
-        screen_Display[finaly][pixel][0] = red;
-        screen_Display[finaly][pixel][1] = green;
-        screen_Display[finaly][pixel][2] = blue;
+        screen_Display[scanlineCheck][pixel][0] = red;
+        screen_Display[scanlineCheck][pixel][1] = green;
+        screen_Display[scanlineCheck][pixel][2] = blue;
 
     }
 }
@@ -1048,6 +1048,7 @@ void Emulator::renderSprites()
         BYTE indexMemory = spriteIndex * 4;
         BYTE spriteYPos = readMemory(SpriteAttributeAddr + spriteIndex) - 16;
         BYTE spriteXPos = readMemory(SpriteAttributeAddr + spriteIndex + 1) - 8;
+        //Used to identify where to find the sprite in memmory
         BYTE spriteIdentifier = readMemory(SpriteAttributeAddr + spriteIndex + 2);
         //spriteData contains more specific information of the sprite
         BYTE spriteData = readMemory(SpriteAttributeAddr + spriteIndex + 3);
@@ -1055,8 +1056,82 @@ void Emulator::renderSprites()
         bool yFlip = TestBit(spriteData, 6);
         bool xFlip = TestBit(spriteData, 5);
 
-        
-        
+        int scanline = readMemory(scanlineAddr);
+
+        int ySize = 8;
+        if(useRes_8x16)
+        {
+            ySize = 16;
+        }    
+
+        //checks if scanline should render the sprite or not
+        if((scanline >= spriteYPos) && (scanline <= (spriteYPos + ySize)))
+        {
+            
+            BYTE line = scanline - spriteYPos;
+
+            //We read the the data backwards
+            if(yFlip)
+            {
+                line -= ySize;
+                line *= -1;
+            }
+            //A horizontal line takes 2 bytes
+            line *= 2;
+            WORD spriteMemory = 0x8000 + (spriteIdentifier * 16);
+            BYTE line1 = readMemory(spriteMemory + line);
+            BYTE line2 = readMemory(spriteMemory + line + 1);
+
+
+            //Easier to read from right to left
+            for(int xPixel = 7; xPixel >= 0; xPixel--)
+            {
+                int colourBit = xPixel;
+                if(xFlip)
+                {
+                    colourBit -= 7;
+                    colourBit *= -1;
+                }
+
+                int colorNum = BitGetVal(line2, colourBit);
+                colorNum <<= 1;
+                colorNum |= BitGetVal(line1, colourBit);
+
+                WORD spritePaletteAddr = (TestBit(spriteData, 4) == 1)? SpritePallete1Addr:SpritePallete2Addr; 
+                COLOR col = GetColor(colorNum, spritePaletteAddr);
+
+                int red = 0;
+                int green = 0;
+                int blue = 0;
+
+                switch(col)
+                {
+                    case WHITE: red = 255; green = 255; blue = 255; break;
+                    case LIGHT_GRAY: red = 0xCC; green = 0xCC; blue = 0xCC; break;
+                    case DARK_GRAY: red = 0x77; green = 0x77; blue = 0x77; break;
+                    case BLACK: red = 0; green = 0; blue = 0; break;
+                }
+
+                BYTE scanlineCheck = readMemory(scanlineAddr);
+
+                //Basically since xPixel is incrementing down, we want to make it negative and add 7 so we count up
+                int xPix = 0 - xPixel;
+                xPix += 7;
+
+                //Add existing spriteXPos to check 
+                int pixel = spriteXPos + xPix;
+
+                //Check just in case scanline or existing pixel goes out
+                if((scanlineCheck > 143) | (scanlineCheck < 0) | (pixel < 0) | (pixel > 159))
+                {
+                    continue;
+                }
+
+                screen_Display[scanlineCheck][xPixel][0] = red;
+                screen_Display[scanlineCheck][xPixel][1] = green;
+                screen_Display[scanlineCheck][xPixel][2] = blue;
+            }
+        }
     }
 
 
