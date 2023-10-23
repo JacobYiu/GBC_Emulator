@@ -50,6 +50,9 @@
 #define SpritePallete2Addr 0xFF49  //SPRITE_Color_Palettes_2
 #define SpriteAttributeAddr 0xFE00 //Sprite Attributes
 
+//Joypad Components & their addresses
+#define joypadAddr 0xFF00          //Joypad 
+
 
 //DMA Components & their addresses
 #define DMAAddr 0xFF46
@@ -147,6 +150,19 @@ private:
     //Used to track scanline. Takes 456 clock cycles to draw one scanline and move on to the next
     int scanlineCounter;
 
+    //This returns a BYTE of keys associated with each key
+    /*
+        SDLK_a : key = 4
+        SDLK_s : key = 5
+        SDLK_RETURN : key = 7
+        SDLK_SPACE : key = 6
+        SDLK_RIGHT : key = 0
+        SDLK_LEFT : key = 1
+        SDLK_UP : key = 2
+        SDLK_DOWN : key = 3 
+    */
+    BYTE joypadKeyState;
+
     bool masterInterrupt;
     
 
@@ -196,6 +212,16 @@ private:
     void renderTiles();
     void renderSprites();
     COLOR GetColor(int colorNum, WORD pallete_Address) const;
+
+    //Handle Joypad
+    void keyPressed(int key);
+    void keyReleased(int key);
+    BYTE GetJoypadState() const;
+
+    //Handle Opcodes
+    int ExecuteNextOpcode();
+    int ExecuteOpcode(BYTE opcode);
+    
     //Synchronize
     void Update();
 };

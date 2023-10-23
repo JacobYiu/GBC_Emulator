@@ -62,6 +62,9 @@ bool Emulator::restartCPU()
 
     masterInterrupt = true;
 
+    //Set all joypads to true. Active low. 
+    BYTE joypadKeyState = 0xFF;
+
     scanlineCounter = 456; //Default starting value for scanline Counter
 }
 
@@ -163,6 +166,11 @@ BYTE Emulator::readMemory(WORD address) const
     {
         WORD newAddress = address - 0x2000;
         return external_RAM_BANK_Memory[newAddress + (current_EXT_RAM_BANK * 2000)];
+    }
+
+    else if(address == joypadAddr)
+    {
+        return GetJoypadState();
     }
 
     else
@@ -1168,6 +1176,138 @@ Emulator::COLOR Emulator::GetColor(int colorNum, WORD palette_Address) const
 
     return colorRes;
 }
+
+//--------------------------------------------------------------------------------------------------------
+//Start of Joypad functions
+/*
+Memory Mapping of the interrupts:
+    0xFF00: The Joypad address
+
+In Joypad:
+Bit 7 - Not used
+Bit 6 - Not used
+Bit 5 - P15 Select Button Keys (0=Select)
+Bit 4 - P14 Select Direction Keys (0=Select)
+Bit 3 - P13 Input Down or Start (0=Pressed) (Read Only)
+Bit 2 - P12 Input Up or Select (0=Pressed) (Read Only)
+Bit 1 - P11 Input Left or Button B (0=Pressed) (Read Only)
+Bit 0 - P10 Input Right or Button A (0=Pressed) (Read Only)
+
+Active Low for all bits
+
+;;JoypadKeyState
+SDLK_a : key = 4
+SDLK_s : key = 5
+SDLK_RETURN : key = 7
+SDLK_SPACE : key = 6
+SDLK_RIGHT : key = 0
+SDLK_LEFT : key = 1
+SDLK_UP : key = 2
+SDLK_DOWN : key = 3 
+*/
+
+//Both Joypad data and JoypadKeyState are active low
+//--------------------------------------------------------------------------------------------------------
+void Emulator::keyPressed(int key)
+{
+    bool keyPrevSet = false;
+
+    //The next few lines are implemented like this to prevent debouncing of keys
+    //if there is a key which was recently pressed, true -> false. 
+    if(TestBit(joypadKeyState, key) == false)
+    {
+        keyPrevSet = true;
+    }
+
+    //Active low
+    joypadKeyState = ResetBit(joypadKeyState, key);
+
+    //Option to use buttons or directional keys
+    bool useButton = false;
+
+    if(key > 3)
+    {
+        useButton = true;
+    }
+
+    //Get the data from joypadAddr. Contains whether or not it is a directional or button is set in active low
+    BYTE joypadData = internal_Memory[joypadAddr];
+    bool requestInterrupt = false;
+
+    //player pressed direction and check for direction  
+    if(!useButton && !TestBit(joypadData, 4))
+    {
+        requestInterrupt = true;
+    }
+
+    // player pressed button and check for Button
+    else if(useButton && !TestBit(joypadData, 5))
+    {
+        requestInterrupt = true;
+    }
+
+    if(requestInterrupt && keyPrevSet)
+    {
+        RequestInterrupt(4);
+    }
+
+}
+
+void Emulator::keyReleased(int key)
+{
+    joypadKeyState = SetBit(joypadKeyState, key);
+
+}
+
+
+//Reads the joypadKeyState(But only bits 0 - 3)
+BYTE Emulator::GetJoypadState() const
+{
+    BYTE joypadData = internal_Memory[joypadAddr];
+    
+    //flip all 0s with 1s and all 1s to 0s to make it easier to compare later
+    joypadData ^= 0xFF;
+
+    //Check for direction
+    if(!TestBit(joypadData, 4))
+    {
+        //Just and the first
+        BYTE topByte = joypadKeyState & 0xF;
+        topByte |= 0xF0;
+        joypadData &= joypadData;
+    }
+
+    //Check for buttons
+    else if(!TestBit(joypadData, 5))
+    {
+        BYTE bottomByte = joypadKeyState >> 4;
+        bottomByte |= 0xF0;
+        joypadData &= joypadData;
+    }
+
+    return joypadData;
+
+}
+
+
+int Emulator::ExecuteNextOpcode()
+{
+    int retVal = 0;
+    BYTE opcode = readMemory(program_Counter);
+    program_Counter ++;
+    retVal = ExecuteOpcode(opcode);
+    return retVal;
+}
+
+int ExecuteOpcode(int opcode)
+{
+    switch(opcode)
+    {
+
+    }
+}
+
+
 
 void Emulator::Update()
 {
