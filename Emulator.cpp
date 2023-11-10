@@ -61,6 +61,9 @@ bool Emulator::restartCPU()
     timerCounter = 1024; //Clockspeed/frequency(TMC). Completes 1024 clock cycles in a second 
 
     masterInterrupt = true;
+    halted = false;
+    pendingInteruptDisabled = false;
+    pendingInteruptEnabled = false;
 
     //Set all joypads to true. Active low. 
     BYTE joypadKeyState = 0xFF;
@@ -150,7 +153,7 @@ bool Emulator::writeMemory(WORD address, BYTE data)
     }
 }
 
-BYTE Emulator::readMemory(WORD address) const
+BYTE Emulator::readByte(WORD address) const
 {
     //Read from switchable ROM banks
     //Access current ROM bank in Cartridge memory 
@@ -177,6 +180,15 @@ BYTE Emulator::readMemory(WORD address) const
     {
         return internal_Memory[address];
     }
+}
+
+WORD Emulator::readWord()
+{
+    WORD data2 = readByte(program_Counter + 1);
+    data2 <<= 8;
+    WORD data1 = readByte(program_Counter);
+    WORD finalData = data2 | data1;
+    return finalData;
 }
 
 //--------------------------------------------------------------------------------------------------------
@@ -366,15 +378,15 @@ void Emulator::updateTimers(int cycles)
             //Reset timer tracer to the appropriate value
             setClockFreq();
 
-            if(readMemory(TIMA) == 255)
+            if(readByte(TIMA) == 255)
             {
-                writeMemory(TIMA, readMemory(TMA));
+                writeMemory(TIMA, readByte(TMA));
                 RequestInterrupt(2);
             }
 
             else
             {
-                writeMemory(TIMA, readMemory(TIMA) + 1);
+                writeMemory(TIMA, readByte(TIMA) + 1);
             }
         }
     }
@@ -383,7 +395,7 @@ void Emulator::updateTimers(int cycles)
 bool Emulator::isClockEnabled() const
 {
     //Check bit 2 of TMC to see if clock is enabled
-    if(TestBit(readMemory(TMC), 2))
+    if(TestBit(readByte(TMC), 2))
     {
         return true;
     }
@@ -395,7 +407,7 @@ bool Emulator::isClockEnabled() const
 BYTE Emulator::getClockFreq() const
 {
     //Only get bits 0 - 2 
-    return readMemory(TMC) & 0x3;
+    return readByte(TMC) & 0x3;
 }
 
 //Used to set clock frequency. SHOULD only be set by the hardware and not by code
@@ -445,7 +457,7 @@ types of interrupts:
 //Used to enable a specific bit in interrupt request register
 void Emulator::RequestInterrupt(int id)
 {
-    BYTE req = readMemory(0xFF05);
+    BYTE req = readByte(0xFF05);
     BYTE bitToSet = (0b1 << id);
     req = req | bitToSet;
     writeMemory(0xFF05, req);
@@ -455,8 +467,8 @@ void Emulator::DoInterrupts()
 {
     if(masterInterrupt)
     {
-        BYTE IER = readMemory(IERAddr);
-        BYTE IRR = readMemory(IRRAddr);
+        BYTE IER = readByte(IERAddr);
+        BYTE IRR = readByte(IRRAddr);
         for(int bitNum = 0; bitNum < 5; bitNum++)
         {
             if(bitNum == 3) //Skip bit 3 because no interrupts are set in bit 3
@@ -479,9 +491,10 @@ void Emulator::ServiceInterrupt(BYTE interruptBit)
 {
     //Turn off master interrupt so that no other interrupt can occur 
     masterInterrupt = false;
+    halted = false;
 
     //Turn off the bit corresponding to the interrupt because it is going to be serviced 
-    BYTE data = readMemory(0xFF0F);
+    BYTE data = readByte(0xFF0F);
     data = ResetBit(data, interruptBit);
     writeMemory(0xFF0F, data);
 
@@ -556,7 +569,7 @@ void Emulator::updateGraphics(int cycles)
     if(scanlineCounter <= 0)
     {
         Cartridge_Memory[scanlineAddr]++;
-        int currentline = readMemory(scanlineAddr);
+        int currentline = readByte(scanlineAddr);
         scanlineCounter = 456;
         //if currentScanline is 144 then its time to turn on V-Blank Interrupts
         if(currentline == 144)
@@ -584,7 +597,7 @@ void Emulator::updateGraphics(int cycles)
 //There are 2 types of interrupt happening: Mode change & Doing special effect depending on the scanline number check 
 void Emulator::setLCDStatus()
 {
-    BYTE lcdStatus = readMemory(LCDStatusAddr);
+    BYTE lcdStatus = readByte(LCDStatusAddr);
     //if LCD is disabled
     if(IsLCDEnabled() == false)
     {
@@ -598,9 +611,9 @@ void Emulator::setLCDStatus()
     
     //Checking for mode change ---------------------------------------------
 
-    BYTE currentscanline = readMemory(scanlineAddr);
+    BYTE currentscanline = readByte(scanlineAddr);
     //Get the zeroth and first bit to get the mode only
-    BYTE currentmode = readMemory(lcdStatus) & 0x3;
+    BYTE currentmode = readByte(lcdStatus) & 0x3;
     BYTE mode = 0; //Set default mode to 0
     int mode2Bounds = 456 - 80;
     int mode3Bounds = mode2Bounds - 172;  
@@ -653,8 +666,8 @@ void Emulator::setLCDStatus()
 
 
     //Doing Special Effect on the Scanline ---------------------------------------------
-    BYTE currentScanline = readMemory(scanlineAddr);
-    BYTE SpclEffScanline = readMemory(scanlineSpclAddr);
+    BYTE currentScanline = readByte(scanlineAddr);
+    BYTE SpclEffScanline = readByte(scanlineSpclAddr);
     if(currentScanline == SpclEffScanline)
     {
         //Used to set coincidence flag
@@ -678,7 +691,7 @@ void Emulator::setLCDStatus()
 bool Emulator::IsLCDEnabled() const
 {
     //Check whether or not bit 7 in LCD Control Register
-    return TestBit(readMemory(LCDCtrlRegAddr), 7);
+    return TestBit(readByte(LCDCtrlRegAddr), 7);
 }
 
 //--------------------------------------------------------------------------------------------------------
@@ -702,7 +715,7 @@ void Emulator::DMATransfer(BYTE data)
     BYTE address = data << 8; //Equivalent to doing data * 100
     for(int i = 0; i < 0xA0; i++)
     {
-        writeMemory(0xFE00+i, readMemory(address+i));
+        writeMemory(0xFE00+i, readByte(address+i));
     }
 }
 
@@ -827,7 +840,7 @@ Note that the palettes make it easier because the emulator won't need to change 
 
 void Emulator::drawScanline()
 {
-    BYTE LCDControlReg = readMemory(LCDCtrlRegAddr);
+    BYTE LCDControlReg = readByte(LCDCtrlRegAddr);
     //Render background
     if(TestBit(LCDControlReg, 0))
     {
@@ -862,12 +875,12 @@ void Emulator::renderTiles()
     WORD tileIdMemory = 0;
     bool unsig = false;
 
-    BYTE viewingAreaXPos = readMemory(viewingAreaXPosAddr);
-    BYTE viewingAreaYPos = readMemory(viewingAreaYPosAddr);
-    BYTE windowXPos = readMemory(windowXPosAddr) - 7;
-    BYTE windowYPos = readMemory(windowYPosAddr);
+    BYTE viewingAreaXPos = readByte(viewingAreaXPosAddr);
+    BYTE viewingAreaYPos = readByte(viewingAreaYPosAddr);
+    BYTE windowXPos = readByte(windowXPosAddr) - 7;
+    BYTE windowYPos = readByte(windowYPosAddr);
 
-    BYTE LCDCtrlReg = readMemory(LCDCtrlRegAddr);
+    BYTE LCDCtrlReg = readByte(LCDCtrlRegAddr);
 
     bool windowEnable = false;
 
@@ -876,7 +889,7 @@ void Emulator::renderTiles()
     {
         //Check if current scanline to be drawn is within windowYPos
         //Think about it. how the f we gonna draw a window if the scanline to be drawn is not drawn yet.
-        if(windowYPos <= readMemory(scanlineAddr))
+        if(windowYPos <= readByte(scanlineAddr))
         {
             windowEnable = true;
         }
@@ -937,13 +950,13 @@ void Emulator::renderTiles()
     if(!windowEnable)
     {
         //viewingAreaYPos is where among the 256 vertical lines the viewing area is first drawn at. 
-        yPos = viewingAreaYPos + readMemory(scanlineAddr);
+        yPos = viewingAreaYPos + readByte(scanlineAddr);
     }
 
     else
     {
         
-        yPos = readMemory(scanlineAddr) - windowYPos; 
+        yPos = readByte(scanlineAddr) - windowYPos; 
     }
 
     //Which of 8 pixels within a tile is the scanline currently on?   
@@ -969,11 +982,11 @@ void Emulator::renderTiles()
         WORD tileAddr = tileIdMemory + tileCol + tileRow;
         if(unsig)
         {
-            tileNum = (BYTE) readMemory(tileAddr);  
+            tileNum = (BYTE) readByte(tileAddr);  
         }
         else
         {
-            tileNum = (SIGNED_BYTE) readMemory(tileAddr);
+            tileNum = (SIGNED_BYTE) readByte(tileAddr);
         }
 
         SIGNED_WORD tileLocationAddr;
@@ -993,8 +1006,8 @@ void Emulator::renderTiles()
         //Multiply by 2 since a line is 2 bytes
         line *= 2; 
 
-        BYTE line1 = readMemory(tileLocationAddr + line);
-        BYTE line2 = readMemory(tileLocationAddr + line + 1);
+        BYTE line1 = readByte(tileLocationAddr + line);
+        BYTE line2 = readByte(tileLocationAddr + line + 1);
 
         //Find out which pixel in that 8 pixel horizontal line
         int colourBit = xPos % 8;
@@ -1022,7 +1035,7 @@ void Emulator::renderTiles()
             case BLACK: red = 0; green = 0; blue = 0; break;
         }
 
-        int scanlineCheck = readMemory(scanlineAddr);
+        int scanlineCheck = readByte(scanlineAddr);
 
         //safety check to make sure the pixel I am drawing is within the 160x144 bounds
         if((scanlineCheck < 0) | (scanlineCheck > 143) | (pixel < 0) | (pixel < 159) )
@@ -1040,7 +1053,7 @@ void Emulator::renderTiles()
 void Emulator::renderSprites()
 {
     bool useRes_8x16 = false;
-    BYTE lcdCtrlReg = readMemory(LCDCtrlRegAddr);
+    BYTE lcdCtrlReg = readByte(LCDCtrlRegAddr);
     if((TestBit(lcdCtrlReg, 2)) == 1)
     {
         useRes_8x16 = true;
@@ -1054,17 +1067,17 @@ void Emulator::renderSprites()
     {
         //since each sprite attribute is 4 bytes
         BYTE indexMemory = spriteIndex * 4;
-        BYTE spriteYPos = readMemory(SpriteAttributeAddr + spriteIndex) - 16;
-        BYTE spriteXPos = readMemory(SpriteAttributeAddr + spriteIndex + 1) - 8;
+        BYTE spriteYPos = readByte(SpriteAttributeAddr + spriteIndex) - 16;
+        BYTE spriteXPos = readByte(SpriteAttributeAddr + spriteIndex + 1) - 8;
         //Used to identify where to find the sprite in memmory
-        BYTE spriteIdentifier = readMemory(SpriteAttributeAddr + spriteIndex + 2);
+        BYTE spriteIdentifier = readByte(SpriteAttributeAddr + spriteIndex + 2);
         //spriteData contains more specific information of the sprite
-        BYTE spriteData = readMemory(SpriteAttributeAddr + spriteIndex + 3);
+        BYTE spriteData = readByte(SpriteAttributeAddr + spriteIndex + 3);
 
         bool yFlip = TestBit(spriteData, 6);
         bool xFlip = TestBit(spriteData, 5);
 
-        int scanline = readMemory(scanlineAddr);
+        int scanline = readByte(scanlineAddr);
 
         int ySize = 8;
         if(useRes_8x16)
@@ -1087,8 +1100,8 @@ void Emulator::renderSprites()
             //A horizontal line takes 2 bytes
             line *= 2;
             WORD spriteMemory = 0x8000 + (spriteIdentifier * 16);
-            BYTE line1 = readMemory(spriteMemory + line);
-            BYTE line2 = readMemory(spriteMemory + line + 1);
+            BYTE line1 = readByte(spriteMemory + line);
+            BYTE line2 = readByte(spriteMemory + line + 1);
 
 
             //Easier to read from right to left
@@ -1120,7 +1133,7 @@ void Emulator::renderSprites()
                     case BLACK: red = 0; green = 0; blue = 0; break;
                 }
 
-                BYTE scanlineCheck = readMemory(scanlineAddr);
+                BYTE scanlineCheck = readByte(scanlineAddr);
 
                 //Basically since xPixel is incrementing down, we want to make it negative and add 7 so we count up
                 int xPix = 0 - xPixel;
@@ -1148,7 +1161,7 @@ void Emulator::renderSprites()
 Emulator::COLOR Emulator::GetColor(int colorNum, WORD palette_Address) const
 {
     COLOR colorRes = WHITE;
-    BYTE pallete = readMemory(palette_Address);
+    BYTE pallete = readByte(palette_Address);
     int hi = 0;
     int lo = 0;
 
@@ -1292,27 +1305,49 @@ BYTE Emulator::GetJoypadState() const
 
 int Emulator::ExecuteNextOpcode()
 {
-    int retVal = 0;
-    BYTE opcode = readMemory(program_Counter);
-    program_Counter ++;
-    retVal = ExecuteOpcode(opcode);
-    return retVal;
-}
-
-int ExecuteOpcode(int opcode)
-{
-    switch(opcode)
+    if(!halted)
     {
+        int retVal = 0;
+        BYTE opcode = readByte(program_Counter);
+        program_Counter ++;
+        retVal = ExecuteOpcode(opcode);
+        return retVal;        
+    }
 
+    //We return 4 cycles each time even if the CPU is halted
+    else
+    {
+        return 4;
+    }
+
+    if(pendingInteruptDisabled)
+    {
+        //This is so that we execute the instruction after the pendingInterruptDisable instruction is called
+        if(readByte(program_Counter - 1) != 0xF3)
+        {
+            //Set to false because it has done its job of setting masterInterrupt off
+            pendingInteruptDisabled = false;
+            masterInterrupt = false;
+        }
+    }
+
+    if(pendingInteruptEnabled)
+    {
+        //This is so that we execute the instruction after the pendingInterruptEnabled instruction is called
+        if(readByte(program_Counter - 1) != 0xFB)
+        {
+            //Set to false because it has done its job of setting masterInterrupt on
+            pendingInteruptDisabled = false;
+            masterInterrupt = true;
+        }
     }
 }
-
 
 
 void Emulator::Update()
 {
     const int maxCycles = 69905;        //Synchronize the gameboy clock timer and graphics emulation by dividing the number of clock cycles executed per second with frame rate per second
-    int cyclesThisUpdate = 0;           //Track clock cycles
+    cyclesThisUpdate = 0;           //Track clock cycles
 
     while(cyclesThisUpdate < maxCycles)
     {

@@ -64,7 +64,7 @@
 
 typedef unsigned char BYTE;         //0 to 256
 typedef char SIGNED_BYTE;           //-128 to 127
-typedef unsigned short WORD;        //-32768 to 32767
+typedef unsigned short WORD;        //-32768 to 32767 
 typedef signed short SIGNED_WORD;   //0 to 65536
 
 //Memory Mapping
@@ -102,8 +102,8 @@ private:
         WORD reg;
         struct 
         {
-            BYTE lo; //control Register bits 0 to 7; Register A,B,D,H from bits 0 to 7
-            BYTE hi; //control Register btis 8 to 15 ; Register F,C,E,L from bits 8 to 15
+            BYTE lo; //control Register bits 0 to 7;  Register F,C,E,L from bits 0 to 7
+            BYTE hi; //control Register btis 8 to 15 ; Register A,B,D,H from bits 8 to 15
         };
         //It is lo first then hi because of endianness
     };
@@ -123,6 +123,7 @@ private:
     screenDisplay[x_screenResolution/2][y_screenResolution/2][1] = 0;
     screenDisplay[x_screenResolution/2][y_screenResolution/2][2] = 0;
     */
+    int cyclesThisUpdate;
 
     WORD program_Counter;
 
@@ -163,20 +164,29 @@ private:
     */
     BYTE joypadKeyState;
 
+    //Used to switch off all kinds of interrupts 
     bool masterInterrupt;
-    
+
+    bool pendingInteruptEnabled;
+    bool pendingInteruptDisabled;
+
+    //If halted is true power off CPU
+    //Stays off until interrupt is serviced
+    bool halted;    
+
 
     /*
-    ------------------------
-    -------FUNCTIONS--------
-    ------------------------
+    ---------------------------------
+    -------EMULATOR FUNCTIONS--------
+    ---------------------------------
     */
     
     //General Function
     void PushWordToStack(WORD dataToPush);
     bool restartCPU();
     bool writeMemory(WORD address, BYTE data);
-    BYTE readMemory(WORD address) const; //Never modify memory hence, const. Safety check
+    BYTE readByte(WORD address) const; //Never modify memory hence, const. Safety check
+    WORD readWord();
 
     //Handle RAMROM Bank Changes
     void set_ROM_BANKING_CONTROLLER();
@@ -221,9 +231,81 @@ private:
     //Handle Opcodes
     int ExecuteNextOpcode();
     int ExecuteOpcode(BYTE opcode);
+    int ExecuteExtendedOpcode();
     
     //Synchronize
     void Update();
+
+    /*
+    ---------------------------------
+    -------OPCODE FUNCTIONS-----------
+    -----------------------------------
+    */
+
+    void CPU_8BIT_LOAD(BYTE &reg);
+    void CPU_REG2REG_LOAD(BYTE &reg1, BYTE &reg2);
+    void WRITE_BYTE(WORD addrInReg, BYTE &reg);
+    void CPU_REG_LOAD_ROM(BYTE &reg, WORD addrInReg);
+    void CPU_16BIT_LOAD(WORD &regWord);
+
+    void PushWordOntoStack(WORD regWord);
+    WORD PopWordOffStack();
+
+    void CPU_8BIT_ADD(BYTE &reg1, BYTE regToAdd, bool useImmediateValue, bool carryFlag);
+    void CPU_8BIT_SUB(BYTE &reg1, BYTE regToSub, bool useImmediateValue, bool carryFlag);
+    void CPU_8BIT_AND(BYTE &reg1, BYTE reg2, bool useImmediateValue);
+    void CPU_8BIT_OR(BYTE &reg1, BYTE reg2, bool useImmediateValue);
+    void CPU_8BIT_XOR(BYTE &reg1, BYTE reg2, bool useImmediateValue);
+
+    void CPU_8BIT_COMPARE(BYTE reg1, BYTE reg2, bool useImmediateValue);
+    void CPU_8BIT_INC(BYTE &reg);
+    void CPU_8BIT_DEC(BYTE &reg);
+
+    void CPU_8BIT_MEMORY_INC(WORD regWord);
+    void CPU_8BIT_MEMORY_DEC(WORD regWord);
+
+    void CPU_16BIT_ADD(WORD &reg1, WORD regToAdd);
+
+    void CPU_16BIT_INC(WORD &regWord);
+    void CPU_16BIT_DEC(WORD &regWord);
+
+    void CPU_JUMP_TO_N(bool useConditions, int flag, bool conditionToSatisfy);
+    void CPU_JUMP_BY_N(bool useConditions, int flag, bool conditionToSatisfy);
+
+    void CPU_CALL(bool useConditions, int flag, bool conditionToSatisfy);    
+    void CPU_RETURN(bool useConditions, int flag, bool conditionToSatisfy);
+
+    //Address to Jump to $0000 + addrToJump. Used for Restart
+    void CPU_RESTART(BYTE addrToJumpTo);
+
+    void CPU_DAA();
+
+    void CPU_RLC(BYTE &reg);
+    void CPU_RL(BYTE &reg);
+    void CPU_RRC(BYTE &reg);
+    void CPU_RR(BYTE &reg);
+    void CPU_SLA(BYTE &reg);
+    void CPU_SRA(BYTE &reg);
+    void CPU_SRL(BYTE &reg);
+
+    void CPU_RLC_MEMORY(WORD addrInReg);
+    void CPU_RL_MEMORY(WORD addrInReg);
+    void CPU_RRC_MEMORY(WORD addrInReg);
+    void CPU_RR_MEMORY(WORD addrInReg);
+    void CPU_SLA_MEMORY(WORD addrInReg);
+    void CPU_SRA_MEMORY(WORD addrInReg);
+    void CPU_SRL_MEMORY(WORD addrInReg);
+
+    void CPU_SWAP_NIBBLES(BYTE &reg);
+    void CPU_SWAP_NIBBLES_MEMORY(WORD addrInReg);
+
+    void CPU_TEST_BIT(BYTE reg, BYTE bitToTest);
+    void CPU_RESET_BIT(BYTE &reg, BYTE bitToReset);
+    void CPU_RESET_BIT_MEMORY(WORD addrInReg, BYTE bitToReset);
+    void CPU_SET_BIT(BYTE &reg, BYTE bitToSet);
+    void CPU_SET_BIT_MEMORY(WORD addrInReg, BYTE bitToSet);
+
+    //Implement Log message as well
 };
 
 #endif

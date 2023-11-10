@@ -1,3 +1,6 @@
 Unsure what changing bits of the ROM bank does. 
 Current_ROM_Bank utilizes all 8 bits, when we try to change the bits in the Current_ROM_Bank, we are able to have 256 different values for current_ROM_BANK
 If that is the case, why are there so many different ROM banks available when the cartridge memory is only 0x200000 which can only fill up to 32 ROM bank at most.
+
+
+Imagine we have a word. Since a WORD in our case is 16 bits. 
