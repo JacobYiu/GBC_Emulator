@@ -1349,7 +1349,7 @@ void Emulator::Update()
     const int maxCycles = 69905;        //Synchronize the gameboy clock timer and graphics emulation by dividing the number of clock cycles executed per second with frame rate per second
     cyclesThisUpdate = 0;           //Track clock cycles
 
-    while(cyclesThisUpdate < maxCycles)
+    while(cyclesThisUpdate < maxCycles),
     {
         int cycles = ExecuteNextOpcode();
         cyclesThisUpdate += cycles;
