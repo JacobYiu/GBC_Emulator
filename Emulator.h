@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
+#include <Gameboy.h>
 
 //Definitions
 #define MaxCartridgeMemory 0x200000
@@ -57,8 +58,6 @@
 //DMA Components & their addresses
 #define DMAAddr 0xFF46
 
-
-
 //CPU clock speed
 #define CPUCLOCKSPEED 4194304
 
@@ -66,6 +65,8 @@ typedef unsigned char BYTE;         //0 to 256
 typedef char SIGNED_BYTE;           //-128 to 127
 typedef unsigned short WORD;        //-32768 to 32767 
 typedef signed short SIGNED_WORD;   //0 to 65536
+
+typedef void (*RenderScreenFunc)();
 
 //Memory Mapping
 /*
@@ -90,8 +91,23 @@ Interrupt Mapping
 class Emulator
 {
 public:   
+
+    //Synchronize
+    void Update();
+
     //Load game
     bool loadCartridge(std::string GameName);
+    //Implement Destructor for Emulator
+    //------
+
+    //Init Emulator
+    bool initEmulator(RenderScreenFunc func);
+
+    RenderScreenFunc RenderScreen;
+
+
+    void keyPressed(int key);
+    void keyReleased(int key);
    
 private:
 
@@ -224,17 +240,12 @@ private:
     COLOR GetColor(int colorNum, WORD pallete_Address) const;
 
     //Handle Joypad
-    void keyPressed(int key);
-    void keyReleased(int key);
     BYTE GetJoypadState() const;
 
     //Handle Opcodes
     int ExecuteNextOpcode();
     int ExecuteOpcode(BYTE opcode);
     int ExecuteExtendedOpcode();
-    
-    //Synchronize
-    void Update();
 
     /*
     ---------------------------------

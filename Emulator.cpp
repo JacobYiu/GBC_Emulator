@@ -1,7 +1,11 @@
 #include "Emulator.h"
 #include "utils.h"
 
-
+bool Emulator::initEmulator(RenderScreenFunc func)
+{
+    RenderScreen = func;
+    return restartCPU();
+}
 
 void Emulator::PushWordToStack(WORD dataToPush)
 {
@@ -71,6 +75,7 @@ bool Emulator::restartCPU()
     scanlineCounter = 456; //Default starting value for scanline Counter
 }
 
+//Need to modify so that users will be able to choose which game to play
 bool Emulator::loadCartridge(std::string GameName)
 {
     memset(Cartridge_Memory, 0, sizeof(Cartridge_Memory)); //Set all arrays in Cartridge memory to 0
@@ -587,8 +592,7 @@ void Emulator::updateGraphics(int cycles)
         else if(currentline < 144)
         {
             drawScanline();
-        }
-        
+        }   
     }
 }
 
@@ -1211,8 +1215,8 @@ Active Low for all bits
 ;;JoypadKeyState
 SDLK_a : key = 4
 SDLK_s : key = 5
-SDLK_RETURN : key = 7
 SDLK_SPACE : key = 6
+SDLK_RETURN : key = 7
 SDLK_RIGHT : key = 0
 SDLK_LEFT : key = 1
 SDLK_UP : key = 2
@@ -1349,7 +1353,7 @@ void Emulator::Update()
     const int maxCycles = 69905;        //Synchronize the gameboy clock timer and graphics emulation by dividing the number of clock cycles executed per second with frame rate per second
     cyclesThisUpdate = 0;           //Track clock cycles
 
-    while(cyclesThisUpdate < maxCycles),
+    while(cyclesThisUpdate < maxCycles)
     {
         int cycles = ExecuteNextOpcode();
         cyclesThisUpdate += cycles;

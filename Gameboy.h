@@ -2,23 +2,33 @@
 #ifndef GAMEBOY_H
 #define GAMEBOY_H
 
+#include "Emulator.h"
+
 class Gameboy{
     private:
         static Gameboy* gameboyInstancePtr;
-        int windowWidth = 640;
-        int windowHeight = 480;
-        Gameboy()
-        {
-
-        }
+        static Emulator* EmulatorInstancePtr;
+        //Constructor when creating the Gameboy
+        Gameboy();
 
     public:
+        static SDL_Window* gWindow;
+        //Used to prevent copying
         Gameboy(const Gameboy &_gameboyInstancePtr) = delete;
+        //Used when deleting the gameboy instance
+        ~Gameboy();
+        static Gameboy* createGameBoyInstance();
+        static Gameboy* getGameBoyInstance();
+        void startGameboySimulation();
+        void renderGame();
+        void checkFPS();
         bool initSDL();
         bool initGL();
-        void handleInput();
+        void handleInput(SDL_Event &event);
+        void setKeyPressed(int keyPressed);
+        void setKeyReleased(int keyReleased);
+        void renderGameboy();
 
-        static Gameboy* createGameBoyInstance();
 };
 
 

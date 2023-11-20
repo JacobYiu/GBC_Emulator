@@ -1,6 +1,19 @@
-Unsure what changing bits of the ROM bank does. 
-Current_ROM_Bank utilizes all 8 bits, when we try to change the bits in the Current_ROM_Bank, we are able to have 256 different values for current_ROM_BANK
-If that is the case, why are there so many different ROM banks available when the cartridge memory is only 0x200000 which can only fill up to 32 ROM bank at most.
+To download SDL, just download it from the website
+    https://glusoft.com/sdl2-tutorials/install-sdl-linux/
 
+Creating a new branch
+git checkout -b [branch_name]
+git add .
+git commit -m "Your commit message here"
+git push origin opcode
+git checkout main
+git merge [branch_name]
 
-Imagine we have a word. Since a WORD in our case is 16 bits. 
+Switch to existing branch
+git checkout [branch_name]
+git pull
+git add .
+git commit -m "Your commit message here"
+git push origin opcode
+git checkout main
+git merge [branch_name]
