@@ -6,23 +6,23 @@
 static const int windowWidth = 160;
 static const int windowHeight = 144;
 
-Gameboy* Gameboy::gameboyInstancePtr = nullptr;
+Gameboy* Gameboy::GameboyInstancePtr = nullptr;
 Emulator* Gameboy::EmulatorInstancePtr = nullptr;
 
  
 //Used to create gameboy instance
 Gameboy* Gameboy::createGameBoyInstance()
 {
-    if(gameboyInstancePtr == nullptr)
+    if(GameboyInstancePtr == nullptr)
     {
-        gameboyInstancePtr = new Gameboy();
-        gameboyInstancePtr -> initSDL();
-        return gameboyInstancePtr;
+        GameboyInstancePtr = new Gameboy();
+        GameboyInstancePtr -> initSDL();
+        return GameboyInstancePtr;
     }
 
     else
     {
-        return gameboyInstancePtr;
+        return GameboyInstancePtr;
     }
 }
 
@@ -30,7 +30,7 @@ Gameboy* Gameboy::createGameBoyInstance()
 //Used to get gameboyinstance
 Gameboy* Gameboy::getGameBoyInstance()
 {
-    return gameboyInstancePtr;
+    return GameboyInstancePtr;
 }
 
 //Private Constructor
@@ -67,8 +67,14 @@ void initEmulatorRender()
 //Need to research on it
 void Gameboy::renderGame()
 {
+    //Reset the Color and Depth
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+    //Reset the current matrix
+    glLoadIdentity();
 
+    //Used to align
+    // glPixelStorei()
+    glDrawPixels(windowWidth, windowHeight, GL_RGB, GL_UNSIGNED_BYTE, EmulatorInstancePtr -> screen_Display);
     //Not sure what I am supposed to put here
     
     SDL_GL_SwapWindow(gWindow);

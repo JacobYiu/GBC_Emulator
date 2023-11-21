@@ -477,9 +477,19 @@ int Emulator::ExecuteOpcode(BYTE opcode)
 		//Unhandled Opcode
 		default:
 		{
-		    char mybuf[200] ;
-		    sprintf(mybuf, "Unhandled Opcode %x", opcode) ;
-		    LogMessage::GetSingleton()->DoLogMessage(mybuf,true) ;
+			char buffer[200] ;
+			int result = std::snprintf(buffer, sizeof(buffer), "Unhandled Opcode %x", opcode);
+			if(result >= 0 && result < sizeof(buffer))
+			{
+				LogMessage::getLogMsgInstance()->writeToLog(buffer);
+			}
+
+			else
+			{
+				char errormsg[50];
+				std::snprintf(errormsg, sizeof(errormsg), "Not enough space, Increase the space for buffer");
+				LogMessage::getLogMsgInstance()->writeToLog(errormsg);
+			}
 			assert(false) ;
 		} break;
 	}
@@ -497,8 +507,19 @@ int Emulator::ExecuteExtendedOpcode( )
 	if (false)
 	{
 		char buffer[200] ;
-		sprintf(buffer, "EXTENDEDOP = %x PC = %x\n", opcode, program_Counter) ;
-		LogMessage::GetSingleton()->DoLogMessage(buffer,false) ;
+		int result = std::snprintf(buffer, sizeof(buffer), "EXTENDEDOP = %x PC = %x\n", opcode, program_Counter);
+		if(result >= 0 && result < sizeof(buffer))
+		{
+			LogMessage::getLogMsgInstance()->writeToLog(buffer);
+		}
+
+		else
+		{
+			char errormsg[50];
+			std::snprintf(errormsg, sizeof(errormsg), "Not enough space, Increase the space for buffer");
+			LogMessage::getLogMsgInstance()->writeToLog(errormsg);
+		}
+		
 	}
 
 	program_Counter++ ;
@@ -786,9 +807,20 @@ int Emulator::ExecuteExtendedOpcode( )
 
 		default:
 		{
-		    char buffer[256];
-		    sprintf(buffer, "Unhandled Extended Opcode %x", opcode) ;
-		    LogMessage::GetSingleton()->DoLogMessage(buffer,true) ;
+			char buffer[200] ;
+			int result = std::snprintf(buffer, sizeof(buffer), "Unhandled Extended Opcode %x\n", opcode);
+			if(result >= 0 && result < sizeof(buffer))
+			{
+				LogMessage::getLogMsgInstance()->writeToLog(buffer);
+			}
+
+			else
+			{
+				char errormsg[50];
+				std::snprintf(errormsg, sizeof(errormsg), "Not enough space, Increase the space for buffer");
+				LogMessage::getLogMsgInstance()->writeToLog(errormsg);
+			}
+
 			assert(false) ;
 		} break;
     }

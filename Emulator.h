@@ -6,7 +6,10 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
-#include <Gameboy.h>
+#include <assert.h>
+#include "Gameboy.h"
+#include "LogMessage.h"
+
 
 //Definitions
 #define MaxCartridgeMemory 0x200000
@@ -92,6 +95,8 @@ class Emulator
 {
 public:   
 
+    BYTE screen_Display[x_ScreenResolution][y_ScreenResolution][3]; //[x-axis][y-axis][RGB color]
+
     //Synchronize
     void Update();
 
@@ -104,7 +109,6 @@ public:
     bool initEmulator(RenderScreenFunc func);
 
     RenderScreenFunc RenderScreen;
-
 
     void keyPressed(int key);
     void keyReleased(int key);
@@ -131,7 +135,6 @@ private:
     Register stack_Pointer;
 
     BYTE Cartridge_Memory[MaxCartridgeMemory]; //Maximum capacity of the Cartridge.
-    BYTE screen_Display[x_ScreenResolution][y_ScreenResolution][3]; //[x-axis][y-axis][RGB color]
     BYTE internal_Memory[MaxInternalMemory];   //Maximmum capacity of internal memory of the emulator
     //To set middle of screent to color red which is 0xFF00000 
     /*

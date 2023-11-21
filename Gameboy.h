@@ -6,7 +6,7 @@
 
 class Gameboy{
     private:
-        static Gameboy* gameboyInstancePtr;
+        static Gameboy* GameboyInstancePtr;
         static Emulator* EmulatorInstancePtr;
         //Constructor when creating the Gameboy
         Gameboy();
@@ -14,7 +14,7 @@ class Gameboy{
     public:
         static SDL_Window* gWindow;
         //Used to prevent copying
-        Gameboy(const Gameboy &_gameboyInstancePtr) = delete;
+        Gameboy(const Gameboy &_GameboyInstancePtr) = delete;
         //Used when deleting the gameboy instance
         ~Gameboy();
         static Gameboy* createGameBoyInstance();
