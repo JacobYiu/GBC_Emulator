@@ -7,8 +7,6 @@
 #include <fstream>
 #include <cstring>
 #include <assert.h>
-#include "Gameboy.h"
-#include "LogMessage.h"
 
 
 //Definitions
@@ -56,7 +54,6 @@
 
 //Joypad Components & their addresses
 #define joypadAddr 0xFF00          //Joypad 
-
 
 //DMA Components & their addresses
 #define DMAAddr 0xFF46

@@ -1,5 +1,6 @@
-#include "utils.h"
 #include "Emulator.h"
+#include "utils.h"
+#include "LogMessage.h"
 #include <stdio.h>
 
 
@@ -452,13 +453,13 @@ int Emulator::ExecuteOpcode(BYTE opcode)
 			unsigned int v = stack_Pointer.reg + n ;
 
 			//overflow imminent if n is greater than 0xFFFF
-			if( n > 0xFFFF )
+			if( v > 0xFFFF )
 				reg_AF.lo = SetBit(reg_AF.lo,FLAG_C) ;
 			else
 				reg_AF.lo = ResetBit(reg_AF.lo,FLAG_C) ;
 
 			//half overflow imminent
-			if( (stack_Pointer.reg & 0xF) + (n & 0xF) > 0xF )
+			if( (stack_Pointer.reg & 0xF) + (v & 0xF) > 0xF )
 				reg_AF.lo = SetBit(reg_AF.lo,FLAG_H) ;
 			else
 				reg_AF.lo = ResetBit(reg_AF.lo,FLAG_H) ;
@@ -479,7 +480,7 @@ int Emulator::ExecuteOpcode(BYTE opcode)
 		{
 			char buffer[200] ;
 			int result = std::snprintf(buffer, sizeof(buffer), "Unhandled Opcode %x", opcode);
-			if(result >= 0 && result < sizeof(buffer))
+			if(result >= 0 && result < static_cast<int>(sizeof(buffer)))
 			{
 				LogMessage::getLogMsgInstance()->writeToLog(buffer);
 			}
@@ -493,6 +494,8 @@ int Emulator::ExecuteOpcode(BYTE opcode)
 			assert(false) ;
 		} break;
 	}
+
+	return 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -508,7 +511,7 @@ int Emulator::ExecuteExtendedOpcode( )
 	{
 		char buffer[200] ;
 		int result = std::snprintf(buffer, sizeof(buffer), "EXTENDEDOP = %x PC = %x\n", opcode, program_Counter);
-		if(result >= 0 && result < sizeof(buffer))
+		if(result >= 0 && result < static_cast<int>(sizeof(buffer)))
 		{
 			LogMessage::getLogMsgInstance()->writeToLog(buffer);
 		}
@@ -809,7 +812,7 @@ int Emulator::ExecuteExtendedOpcode( )
 		{
 			char buffer[200] ;
 			int result = std::snprintf(buffer, sizeof(buffer), "Unhandled Extended Opcode %x\n", opcode);
-			if(result >= 0 && result < sizeof(buffer))
+			if(result >= 0 && result < static_cast<int>(sizeof(buffer)))
 			{
 				LogMessage::getLogMsgInstance()->writeToLog(buffer);
 			}

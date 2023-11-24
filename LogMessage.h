@@ -1,7 +1,6 @@
 #pragma once
 #ifndef LOGMESSAGE_H
 #define LOGMESSAGE_H
-#include "Gameboy.h"
 
 
 class LogMessage{
@@ -11,7 +10,7 @@ class LogMessage{
 
 
     public:
-        LogMessage(const Gameboy &_LogMessageInstancePtr) = delete;
+        LogMessage(const LogMessage &_LogMessageInstancePtr) = delete;
         ~LogMessage();
         static LogMessage* createLogMessageInstance();
         static LogMessage* getLogMsgInstance();

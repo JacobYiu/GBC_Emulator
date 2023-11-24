@@ -1,6 +1,7 @@
 #include "Gameboy.h"
+#include "LogMessage.h"
 
-int main(char argc, char* argv[])
+int main(int argc, char* argv[])
 {
     LogMessage* logMsg = LogMessage::createLogMessageInstance();
     Gameboy* gameboy = Gameboy::createGameBoyInstance();

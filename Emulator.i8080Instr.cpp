@@ -1,6 +1,5 @@
-#include "utils.h"
 #include "Emulator.h"
-
+#include "utils.h"
 
 
 //--------------------------------------------------------------------------------------------------------
@@ -90,7 +89,7 @@ void Emulator::CPU_8BIT_INC(BYTE &reg1)
     reg_AF.lo = ResetBit(reg_AF.lo, FLAG_N);
 
     //Set/Reset Half Carry flag
-    reg_AF.lo = (reg1 & 0xF > 0xF)? SetBit(reg_AF.lo, FLAG_H) : (ResetBit(reg_AF.lo, FLAG_H));
+    reg_AF.lo = ((reg1 & 0xF) > 0xF)? SetBit(reg_AF.lo, FLAG_H) : (ResetBit(reg_AF.lo, FLAG_H));
 
     //Do not set the carry flag. 
 }
@@ -108,7 +107,7 @@ void Emulator::CPU_8BIT_MEMORY_INC(WORD regWord)
     reg_AF.lo = ResetBit(reg_AF.lo, FLAG_N);
 
     //Set/Reset Half Carry flag
-    reg_AF.lo = (addrVal & 0xF > 0xF)? SetBit(reg_AF.lo, FLAG_H) : (ResetBit(reg_AF.lo, FLAG_H));
+    reg_AF.lo = ((addrVal & 0xF) > 0xF)? SetBit(reg_AF.lo, FLAG_H) : (ResetBit(reg_AF.lo, FLAG_H));
 
     //Do not set the carry flag. 
 }
@@ -154,7 +153,7 @@ void Emulator::CPU_8BIT_MEMORY_DEC(WORD regWord)
     reg_AF.lo = ResetBit(reg_AF.lo, FLAG_N);
 
     //Set/Reset Half Carry flag
-    reg_AF.lo = (addrVal & 0xF < 0)? SetBit(reg_AF.lo, FLAG_H) : (ResetBit(reg_AF.lo, FLAG_H));
+    reg_AF.lo = ((addrVal & 0xF) < 0)? SetBit(reg_AF.lo, FLAG_H) : (ResetBit(reg_AF.lo, FLAG_H));
 
     //Do not set the carry flag. 
 }

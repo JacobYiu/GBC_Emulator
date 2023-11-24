@@ -70,9 +70,11 @@ bool Emulator::restartCPU()
     pendingInteruptEnabled = false;
 
     //Set all joypads to true. Active low. 
-    BYTE joypadKeyState = 0xFF;
+    joypadKeyState = 0xFF;
 
     scanlineCounter = 456; //Default starting value for scanline Counter
+
+    return true;
 }
 
 //Need to modify so that users will be able to choose which game to play
@@ -156,6 +158,8 @@ bool Emulator::writeMemory(WORD address, BYTE data)
     {
         internal_Memory[address] = data;
     }
+
+    return true;
 }
 
 BYTE Emulator::readByte(WORD address) const
@@ -875,7 +879,7 @@ So in the 8 pixel horizontal line, we need to find out which specific pixel we w
 */
 void Emulator::renderTiles()
 {
-    BYTE tileDataMemory = 0;
+    WORD tileDataMemory = 0;
     WORD tileIdMemory = 0;
     bool unsig = false;
 
@@ -1070,13 +1074,13 @@ void Emulator::renderSprites()
     for(int spriteIndex = 0; spriteIndex < 40; spriteIndex++)
     {
         //since each sprite attribute is 4 bytes
-        BYTE indexMemory = spriteIndex * 4;
-        BYTE spriteYPos = readByte(SpriteAttributeAddr + spriteIndex) - 16;
-        BYTE spriteXPos = readByte(SpriteAttributeAddr + spriteIndex + 1) - 8;
+        BYTE spriteIndexMemory = spriteIndex * 4;
+        BYTE spriteYPos = readByte(SpriteAttributeAddr + spriteIndexMemory) - 16;
+        BYTE spriteXPos = readByte(SpriteAttributeAddr + spriteIndexMemory + 1) - 8;
         //Used to identify where to find the sprite in memmory
-        BYTE spriteIdentifier = readByte(SpriteAttributeAddr + spriteIndex + 2);
+        BYTE spriteIdentifier = readByte(SpriteAttributeAddr + spriteIndexMemory + 2);
         //spriteData contains more specific information of the sprite
-        BYTE spriteData = readByte(SpriteAttributeAddr + spriteIndex + 3);
+        BYTE spriteData = readByte(SpriteAttributeAddr + spriteIndexMemory + 3);
 
         bool yFlip = TestBit(spriteData, 6);
         bool xFlip = TestBit(spriteData, 5);

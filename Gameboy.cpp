@@ -1,7 +1,5 @@
-#include <SDL.h>   /* All SDL App's need this */
-#include <SDL_opengl.h>
 #include "Gameboy.h"
-#include "Emulator.h"
+#include "utils.h"
 
 static const int windowWidth = 160;
 static const int windowHeight = 144;
@@ -9,7 +7,23 @@ static const int windowHeight = 144;
 Gameboy* Gameboy::GameboyInstancePtr = nullptr;
 Emulator* Gameboy::EmulatorInstancePtr = nullptr;
 
+SDL_Window* Gameboy::gWindow = nullptr;
+
  
+void initEmulatorRender()
+{
+    Gameboy* gbPtr = Gameboy::getGameBoyInstance();
+    if(gbPtr)
+    {
+        gbPtr -> renderGame();
+    }
+        
+    else
+    {
+        printf("Unable to renderGame because gameboy is not initialized yet");
+    }
+}
+
 //Used to create gameboy instance
 Gameboy* Gameboy::createGameBoyInstance()
 {
@@ -33,6 +47,9 @@ Gameboy* Gameboy::getGameBoyInstance()
     return GameboyInstancePtr;
 }
 
+//Used to define the RenderScreen function in the Emulator Class.
+//We pass in this function as an argument
+
 //Private Constructor
 Gameboy::Gameboy()
 {
@@ -45,22 +62,6 @@ Gameboy::Gameboy()
 Gameboy::~Gameboy()
 {
     delete EmulatorInstancePtr;
-}
-
-//Used to define the RenderScreen function in the Emulator Class.
-//We pass in this function as an argument
-void initEmulatorRender()
-{
-    Gameboy* gbPtr = Gameboy::getGameBoyInstance();
-    if(gbPtr)
-    {
-        gbPtr -> renderGame();
-    }
-        
-    else
-    {
-        printf("Unable to renderGame because gameboy is not initialized yet");
-    }
 }
 
 //Implement RenderGame For emulator. 
@@ -124,9 +125,6 @@ void Gameboy::startGameboySimulation()
 
 bool Gameboy::initSDL()
 {
-    SDL_DisplayMode currentDisplayMode;
-    SDL_GLContext gContext;
-
     printf("Initializing SDL.\n");
     
     /* Initialize defaults, Video and Joystick */
@@ -138,7 +136,7 @@ bool Gameboy::initSDL()
     printf("SDL initialized.\n");
 
     //Create the Window
-    gWindow = SDL_CreateWindow("HEHEHEHE", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, 0);
+    gWindow = SDL_CreateWindow("GameBoy Color", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, 0);
     if (gWindow == NULL)
     {
         printf("Failed To Create SDL Window");
@@ -167,7 +165,7 @@ bool Gameboy::initGL()
     error = glGetError();
     if(error != GL_NO_ERROR)
     {
-        printf( "Error Loading MatrixMode! %s\n", error);
+        printf( "Error Loading MatrixMode! %d\n", error);
         return false;        
     }
 
@@ -176,7 +174,7 @@ bool Gameboy::initGL()
     error = glGetError();
     if(error != GL_NO_ERROR)
     {
-        printf( "Error Setting Up Othographic Camera! %s\n", error);
+        printf( "Error Setting Up Othographic Camera! %d\n", error);
         return false;        
     }
 

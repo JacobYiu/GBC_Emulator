@@ -5,6 +5,16 @@
 LogMessage* LogMessage::LogMessageInstancePtr = nullptr;
 
 
+LogMessage::LogMessage()
+{
+
+}
+
+LogMessage::~LogMessage()
+{
+
+}
+
 LogMessage* LogMessage::createLogMessageInstance()
 {
     if(LogMessageInstancePtr == nullptr)

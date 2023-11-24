@@ -2,6 +2,8 @@
 #ifndef GAMEBOY_H
 #define GAMEBOY_H
 
+#include <SDL2/SDL.h>   /* All SDL App's need this */
+#include <SDL2/SDL_opengl.h>
 #include "Emulator.h"
 
 class Gameboy{
