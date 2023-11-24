@@ -1,7 +1,11 @@
 #include "Emulator.h"
 #include "utils.h"
 
-
+bool Emulator::initEmulator(RenderScreenFunc func)
+{
+    RenderScreen = func;
+    return restartCPU();
+}
 
 void Emulator::PushWordToStack(WORD dataToPush)
 {
@@ -66,11 +70,14 @@ bool Emulator::restartCPU()
     pendingInteruptEnabled = false;
 
     //Set all joypads to true. Active low. 
-    BYTE joypadKeyState = 0xFF;
+    joypadKeyState = 0xFF;
 
     scanlineCounter = 456; //Default starting value for scanline Counter
+
+    return true;
 }
 
+//Need to modify so that users will be able to choose which game to play
 bool Emulator::loadCartridge(std::string GameName)
 {
     memset(Cartridge_Memory, 0, sizeof(Cartridge_Memory)); //Set all arrays in Cartridge memory to 0
@@ -151,6 +158,8 @@ bool Emulator::writeMemory(WORD address, BYTE data)
     {
         internal_Memory[address] = data;
     }
+
+    return true;
 }
 
 BYTE Emulator::readByte(WORD address) const
@@ -587,8 +596,7 @@ void Emulator::updateGraphics(int cycles)
         else if(currentline < 144)
         {
             drawScanline();
-        }
-        
+        }   
     }
 }
 
@@ -871,7 +879,7 @@ So in the 8 pixel horizontal line, we need to find out which specific pixel we w
 */
 void Emulator::renderTiles()
 {
-    BYTE tileDataMemory = 0;
+    WORD tileDataMemory = 0;
     WORD tileIdMemory = 0;
     bool unsig = false;
 
@@ -1066,13 +1074,13 @@ void Emulator::renderSprites()
     for(int spriteIndex = 0; spriteIndex < 40; spriteIndex++)
     {
         //since each sprite attribute is 4 bytes
-        BYTE indexMemory = spriteIndex * 4;
-        BYTE spriteYPos = readByte(SpriteAttributeAddr + spriteIndex) - 16;
-        BYTE spriteXPos = readByte(SpriteAttributeAddr + spriteIndex + 1) - 8;
+        BYTE spriteIndexMemory = spriteIndex * 4;
+        BYTE spriteYPos = readByte(SpriteAttributeAddr + spriteIndexMemory) - 16;
+        BYTE spriteXPos = readByte(SpriteAttributeAddr + spriteIndexMemory + 1) - 8;
         //Used to identify where to find the sprite in memmory
-        BYTE spriteIdentifier = readByte(SpriteAttributeAddr + spriteIndex + 2);
+        BYTE spriteIdentifier = readByte(SpriteAttributeAddr + spriteIndexMemory + 2);
         //spriteData contains more specific information of the sprite
-        BYTE spriteData = readByte(SpriteAttributeAddr + spriteIndex + 3);
+        BYTE spriteData = readByte(SpriteAttributeAddr + spriteIndexMemory + 3);
 
         bool yFlip = TestBit(spriteData, 6);
         bool xFlip = TestBit(spriteData, 5);
@@ -1211,8 +1219,8 @@ Active Low for all bits
 ;;JoypadKeyState
 SDLK_a : key = 4
 SDLK_s : key = 5
-SDLK_RETURN : key = 7
 SDLK_SPACE : key = 6
+SDLK_RETURN : key = 7
 SDLK_RIGHT : key = 0
 SDLK_LEFT : key = 1
 SDLK_UP : key = 2
@@ -1349,7 +1357,7 @@ void Emulator::Update()
     const int maxCycles = 69905;        //Synchronize the gameboy clock timer and graphics emulation by dividing the number of clock cycles executed per second with frame rate per second
     cyclesThisUpdate = 0;           //Track clock cycles
 
-    while(cyclesThisUpdate < maxCycles),
+    while(cyclesThisUpdate < maxCycles)
     {
         int cycles = ExecuteNextOpcode();
         cyclesThisUpdate += cycles;

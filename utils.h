@@ -7,7 +7,7 @@ typedef char SIGNED_BYTE;           // -128 to 127
 typedef unsigned short WORD;        // 0 to 65535
 typedef signed short SIGNED_WORD;   // -32768 to 32767
 
-bool TestBit(BYTE data, BYTE bitToTest)
+static bool TestBit(BYTE data, BYTE bitToTest)
 {
     if (((data >> bitToTest) & 1) == 1) // Corrected condition
     {
@@ -16,20 +16,20 @@ bool TestBit(BYTE data, BYTE bitToTest)
     return false;
 }
 
-BYTE SetBit(BYTE data, BYTE bitToSet)
+static BYTE SetBit(BYTE data, BYTE bitToSet)
 {
     BYTE bitSet = (1 << bitToSet);
     data |= bitSet;
     return data;
 }
 
-BYTE ResetBit(BYTE data, BYTE bitToReset) // Added return type
+static BYTE ResetBit(BYTE data, BYTE bitToReset) // Added return type
 {
     data = data ^ (0b1 << bitToReset); // XOR the bit so that it becomes 0
     return data;
 }
 
-BYTE BitGetVal(BYTE byteToCheck, int bitPos)
+static BYTE BitGetVal(BYTE byteToCheck, int bitPos)
 {
     if(TestBit(byteToCheck, bitPos))
     {

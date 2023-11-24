@@ -6,6 +6,8 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
+#include <assert.h>
+
 
 //Definitions
 #define MaxCartridgeMemory 0x200000
@@ -53,11 +55,8 @@
 //Joypad Components & their addresses
 #define joypadAddr 0xFF00          //Joypad 
 
-
 //DMA Components & their addresses
 #define DMAAddr 0xFF46
-
-
 
 //CPU clock speed
 #define CPUCLOCKSPEED 4194304
@@ -66,6 +65,8 @@ typedef unsigned char BYTE;         //0 to 256
 typedef char SIGNED_BYTE;           //-128 to 127
 typedef unsigned short WORD;        //-32768 to 32767 
 typedef signed short SIGNED_WORD;   //0 to 65536
+
+typedef void (*RenderScreenFunc)();
 
 //Memory Mapping
 /*
@@ -90,8 +91,24 @@ Interrupt Mapping
 class Emulator
 {
 public:   
+
+    BYTE screen_Display[x_ScreenResolution][y_ScreenResolution][3]; //[x-axis][y-axis][RGB color]
+
+    //Synchronize
+    void Update();
+
     //Load game
     bool loadCartridge(std::string GameName);
+    //Implement Destructor for Emulator
+    //------
+
+    //Init Emulator
+    bool initEmulator(RenderScreenFunc func);
+
+    RenderScreenFunc RenderScreen;
+
+    void keyPressed(int key);
+    void keyReleased(int key);
    
 private:
 
@@ -115,7 +132,6 @@ private:
     Register stack_Pointer;
 
     BYTE Cartridge_Memory[MaxCartridgeMemory]; //Maximum capacity of the Cartridge.
-    BYTE screen_Display[x_ScreenResolution][y_ScreenResolution][3]; //[x-axis][y-axis][RGB color]
     BYTE internal_Memory[MaxInternalMemory];   //Maximmum capacity of internal memory of the emulator
     //To set middle of screent to color red which is 0xFF00000 
     /*
@@ -224,17 +240,12 @@ private:
     COLOR GetColor(int colorNum, WORD pallete_Address) const;
 
     //Handle Joypad
-    void keyPressed(int key);
-    void keyReleased(int key);
     BYTE GetJoypadState() const;
 
     //Handle Opcodes
     int ExecuteNextOpcode();
     int ExecuteOpcode(BYTE opcode);
     int ExecuteExtendedOpcode();
-    
-    //Synchronize
-    void Update();
 
     /*
     ---------------------------------
