@@ -2,6 +2,7 @@
 #include "utils.h"
 
 static const int windowWidth = 160;
+//og value is 144. Bug
 static const int windowHeight = 144;
 
 Gameboy* Gameboy::GameboyInstancePtr = nullptr;
@@ -54,9 +55,23 @@ Gameboy* Gameboy::getGameBoyInstance()
 Gameboy::Gameboy()
 {
     EmulatorInstancePtr = new Emulator();
-    EmulatorInstancePtr -> loadCartridge("ROM/Mario.gb");
+    EmulatorInstancePtr -> loadCartridge("cpu_instrs/individual/01-special.gb");
     EmulatorInstancePtr -> initEmulator(initEmulatorRender);    
 }
+
+/*
+Test Cases
+01-special.gb
+03-op\ sp,hl.gb
+04-op\ r,imm.gb
+05-op\ rp.gb
+06-ld\ r,r.gb
+07-jr,jp,call,ret,rst.gb
+08-misc\ instrs.gb
+09-op\ r,r.gb
+10-bit\ ops.gb
+11-op\ a,\(hl\).gb
+*/
 
 //Public Delete
 Gameboy::~Gameboy()
@@ -66,19 +81,41 @@ Gameboy::~Gameboy()
 
 //Implement RenderGame For emulator. 
 //Need to research on it
+
+void Gameboy::debugScreenDisplay()
+{
+    // for(int i = 0; i < windowWidth; i++)
+    // {
+    //     for(int j = 0; j < windowHeight; j++)
+    //     {
+    //         for(int k = 0; k < 3; k++)
+    //         {
+    //             std::cout << EmulatorInstancePtr -> screen_Display[i][j][k] << std::endl;
+    //         }
+    //     }
+    // }
+
+    // std::cout << "Screen Display is.." << std::endl;
+    std::cout << EmulatorInstancePtr -> screen_Display[0][0][0] << std::endl; 
+    std::cout << EmulatorInstancePtr -> screen_Display[0][0][1] << std::endl;
+}
+
 void Gameboy::renderGame()
 {
+    // std::cout << "Updating Frame" << std::endl;
     //Reset the Color and Depth
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
     //Reset the current matrix
     glLoadIdentity();
-
-    //Used to align
-    // glPixelStorei()
+    //Renders it from top to bottom and left to right as expected
+    glRasterPos2i(-1, 1);
+	glPixelZoom(1, -1);
     glDrawPixels(windowWidth, windowHeight, GL_RGB, GL_UNSIGNED_BYTE, EmulatorInstancePtr -> screen_Display);
-    //Not sure what I am supposed to put here
+    // std::cout << EmulatorInstancePtr -> screen_Display << std::endl;
+    // debugScreenDisplay();
     
     SDL_GL_SwapWindow(gWindow);
+    // std::cout <<"Finished Updating Frames" << std::endl;
 }
 
 /* 
@@ -93,7 +130,7 @@ void Gameboy::startGameboySimulation()
     bool quit = false;
     SDL_Event event;
 
-    float fps = 59.8;
+    float fps = 58.7;
     //Interval before frames refresh is 1000miliseconds / 60
     float interval = 1000 / fps;
     unsigned int totalTimeinMiliPassed = SDL_GetTicks64();
@@ -103,20 +140,25 @@ void Gameboy::startGameboySimulation()
         while(SDL_PollEvent(&event))
         {
             handleInput(event);
-            if(event.type == quit)
+            if(event.type == SDL_QUIT)
             {
+                std::cout << "Quitting....." << std::endl;
                 quit = true;
+                break;
             }
 
-            //Check frames and if it is the case then update the Emulator
-            unsigned int currentTime = SDL_GetTicks64();
-            if(totalTimeinMiliPassed + interval < currentTime)
-            {
-                //Probably need to implement later on when we want to check issues with timing and what not
-                // checkFPS();
-                totalTimeinMiliPassed = SDL_GetTicks64();
-                EmulatorInstancePtr -> Update();
-            }
+            // std::cout << "Testing if game is running properly " << SDL_GetTicks64() << std::endl;
+        }
+
+        //Check frames and if it is the case then update the Emulator
+        unsigned int currentTime = SDL_GetTicks64();
+        if(currentTime > totalTimeinMiliPassed + interval)
+        {
+            //Probably need to implement later on when we want to check issues with timing and what not
+            // checkFPS();
+            // std::cout << "Time has elapsed " << std::endl;
+            EmulatorInstancePtr -> Update();
+            totalTimeinMiliPassed = SDL_GetTicks64();
         }
     }
 
@@ -126,9 +168,10 @@ void Gameboy::startGameboySimulation()
 bool Gameboy::initSDL()
 {
     printf("Initializing SDL.\n");
+    SDL_GLContext gContext;
     
     /* Initialize defaults, Video and Joystick */
-    if((SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK) == -1)) { 
+    if((SDL_Init(SDL_INIT_EVERYTHING) == -1)) { 
         printf("Could not initialize SDL: %s.\n", SDL_GetError());
         return false;
     }
@@ -136,7 +179,8 @@ bool Gameboy::initSDL()
     printf("SDL initialized.\n");
 
     //Create the Window
-    gWindow = SDL_CreateWindow("GameBoy Color", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, 0);
+    Uint32 SDLFlags = SDL_WINDOW_OPENGL;
+    gWindow = SDL_CreateWindow("GameBoy Color", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowHeight, windowHeight, SDLFlags);
     if (gWindow == NULL)
     {
         printf("Failed To Create SDL Window");
@@ -145,12 +189,21 @@ bool Gameboy::initSDL()
 
     printf("Successfully Created The Window\n");
 
+    gContext = SDL_GL_CreateContext(gWindow);
+    if(gWindow == NULL)
+    {
+        printf("Failed to create gContext");
+        return false;
+    }
+
     //Initialize GL
     if(!initGL())
     {
         printf("Unable to initialize openGL!\n");
         return false;
     }
+
+    printf("Sucessfully intializeed openGL\n");
 
     return true;
 }
@@ -183,7 +236,7 @@ bool Gameboy::initGL()
     //-------------------------------
 
     //Set color to black with opacity 1
-    glClearColor(0, 0, 0, 1.0);
+    glClearColor(83, 0, 0, 1.0);
     //Clear the buffer
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
     
@@ -220,9 +273,9 @@ void Gameboy::handleInput(SDL_Event &event)
 
         if(key != -1)
         {
+            std::cout << "Key Pressed" << std::endl;
             setKeyPressed(key);
         }
-
     }
 
     else if (event.type == SDL_KEYUP)

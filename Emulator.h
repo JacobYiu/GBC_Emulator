@@ -26,7 +26,7 @@
 //Timer Components & their addresses
 #define DividerTimerAddr 0xFF04 //Divider Timer
 #define TIMA 0xFF05 //Timer
-#define TMA 0xFF06  //Timer Modulator, the value here is used when timer overflows
+#define TMA 0xFF06  //Timer Modulator, the value here is used to replace TIMA when timer overflows
 #define TMC 0xFF07  //Timer Controller, Holds a bit value on how much to increment the timer per second. e.g.(4096Hz) For every 1 second, increment the timer 4096 times
 
 //Interrupt Components & their addresses
@@ -44,7 +44,7 @@
 
 //Graphics Components & their addresses 
 #define viewingAreaXPosAddr 0xFF42 //Y Position of the BACKGROUND to start drawing the viewing area from
-#define viewingAreaYPosAddr 0xFF42 //X Position of the BACKGROUND to start drawing the viewing area from
+#define viewingAreaYPosAddr 0xFF43 //X Position of the BACKGROUND to start drawing the viewing area from
 #define windowXPosAddr 0xFF4A      //The Y Position of the VIEWING AREA to start drawing the window from
 #define windowYPosAddr 0xFF4B     //The X Position - 7 of the VIEWING AREA to start drawing the window from
 #define BGPalettesAddr 0xFF47      //BG_Color_Palettes
@@ -197,10 +197,16 @@ private:
     ---------------------------------
     */
     
+    //Debug Functions
+    void debugStorageMemory(BYTE array[], int startingPt, int count);
+    void testRegisterLog();
+    void debugRegisters();
+    BYTE findDataInMemory(BYTE dataToFind);
+
     //General Function
     void PushWordToStack(WORD dataToPush);
     bool restartCPU();
-    bool writeMemory(WORD address, BYTE data);
+    bool writeByte(WORD address, BYTE data);
     BYTE readByte(WORD address) const; //Never modify memory hence, const. Safety check
     WORD readWord();
 
@@ -291,10 +297,10 @@ private:
 
     void CPU_DAA();
 
-    void CPU_RLC(BYTE &reg);
-    void CPU_RL(BYTE &reg);
-    void CPU_RRC(BYTE &reg);
-    void CPU_RR(BYTE &reg);
+    void CPU_RLC(BYTE &reg, bool isRegA);
+    void CPU_RL(BYTE &reg, bool isRegA);
+    void CPU_RRC(BYTE &reg, bool isRegA);
+    void CPU_RR(BYTE &reg, bool isRegA);
     void CPU_SLA(BYTE &reg);
     void CPU_SRA(BYTE &reg);
     void CPU_SRL(BYTE &reg);
