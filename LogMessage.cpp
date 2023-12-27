@@ -34,9 +34,9 @@ LogMessage* LogMessage::getLogMsgInstance()
     return LogMessageInstancePtr;
 }
 
-void LogMessage::writeToLog(char* msg)
+void LogMessage::writeToLog(std::string msg)
 {
-    std::ofstream logFile("Gameboy.log");
+    std::ofstream logFile("error.log");
 
     if(!logFile.is_open())
     {

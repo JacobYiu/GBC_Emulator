@@ -3,6 +3,7 @@
 #define LOGMESSAGE_H
 
 
+
 class LogMessage{
     private:
         static LogMessage* LogMessageInstancePtr;
@@ -14,7 +15,7 @@ class LogMessage{
         ~LogMessage();
         static LogMessage* createLogMessageInstance();
         static LogMessage* getLogMsgInstance();
-        static void writeToLog(char* msg);
+        static void writeToLog(std::string msg);
 };
 
 #endif

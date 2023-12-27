@@ -22,6 +22,7 @@ class Gameboy{
         static Gameboy* createGameBoyInstance();
         static Gameboy* getGameBoyInstance();
         void startGameboySimulation();
+        void debugScreenDisplay();
         void renderGame();
         void checkFPS();
         bool initSDL();

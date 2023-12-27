@@ -68,12 +68,12 @@ int Emulator::ExecuteOpcode(BYTE opcode)
 		case 0x6D: CPU_REG2REG_LOAD(reg_HL.lo, reg_HL.lo) ; return 4 ; break ;
 
 		// write reg to memory address
-		case 0x70: WRITE_BYTE(reg_HL.reg, reg_BC.hi) ; return 8 ; break ;
-		case 0x71: WRITE_BYTE(reg_HL.reg, reg_BC.lo) ; return 8 ; break ;
-		case 0x72: WRITE_BYTE(reg_HL.reg, reg_DE.hi) ; return 8 ; break ;
-		case 0x73: WRITE_BYTE(reg_HL.reg, reg_DE.lo) ; return 8 ; break ;
-		case 0x74: WRITE_BYTE(reg_HL.reg, reg_HL.hi) ; return 8 ; break ;
-		case 0x75: WRITE_BYTE(reg_HL.reg, reg_HL.lo) ; return 8 ; break ;
+		case 0x70: writeByte(reg_HL.reg, reg_BC.hi) ; return 8 ; break ;
+		case 0x71: writeByte(reg_HL.reg, reg_BC.lo) ; return 8 ; break ;
+		case 0x72: writeByte(reg_HL.reg, reg_DE.hi) ; return 8 ; break ;
+		case 0x73: writeByte(reg_HL.reg, reg_DE.lo) ; return 8 ; break ;
+		case 0x74: writeByte(reg_HL.reg, reg_HL.hi) ; return 8 ; break ;
+		case 0x75: writeByte(reg_HL.reg, reg_HL.lo) ; return 8 ; break ;
 
 		// write contents in memory address to reg
 		case 0x7E: CPU_REG_LOAD_ROM(reg_AF.hi, reg_HL.reg) ; return 8 ; break ;
@@ -97,18 +97,18 @@ int Emulator::ExecuteOpcode(BYTE opcode)
 		case 0x6F : CPU_REG2REG_LOAD(reg_HL.lo, reg_AF.hi) ; return 4 ; break ;
 
 		// put register A into memory address
-		case 0x02: WRITE_BYTE(reg_BC.reg, reg_AF.hi) ; return 8 ; break ;
-		case 0x12: WRITE_BYTE(reg_DE.reg, reg_AF.hi) ; return 8 ; break ;
-		case 0x77: WRITE_BYTE(reg_HL.reg, reg_AF.hi) ; return 8 ; break ;
-		case 0xE2: WRITE_BYTE((0xFF00+reg_BC.lo), reg_AF.hi) ; return 8 ; break ;
+		case 0x02: writeByte(reg_BC.reg, reg_AF.hi) ; return 8 ; break ;
+		case 0x12: writeByte(reg_DE.reg, reg_AF.hi) ; return 8 ; break ;
+		case 0x77: writeByte(reg_HL.reg, reg_AF.hi) ; return 8 ; break ;
+		case 0xE2: writeByte((0xFF00+reg_BC.lo), reg_AF.hi) ; return 8 ; break ;
 
-		// put memory into register A, decrement/increment memory
+		// put value in memory at addres reg_HL into register A, decrement/increment memory
 		case 0x3A: CPU_REG_LOAD_ROM(reg_AF.hi,reg_HL.reg ) ; CPU_16BIT_DEC(reg_HL.reg) ; return 8 ; break ;
 		case 0x2A: CPU_REG_LOAD_ROM(reg_AF.hi,reg_HL.reg ) ; CPU_16BIT_INC(reg_HL.reg) ; return 8 ; break ;
 
 		// put register A into memory, decrement/increment reg
-		case 0x32: WRITE_BYTE(reg_HL.reg, reg_AF.hi); CPU_16BIT_DEC(reg_HL.reg) ; return 8 ; break;
-		case 0x22: WRITE_BYTE(reg_HL.reg, reg_AF.hi); CPU_16BIT_INC(reg_HL.reg) ; return 8 ; break;
+		case 0x32: writeByte(reg_HL.reg, reg_AF.hi); CPU_16BIT_DEC(reg_HL.reg) ; return 8 ; break;
+		case 0x22: writeByte(reg_HL.reg, reg_AF.hi); CPU_16BIT_INC(reg_HL.reg) ; return 8 ; break;
 
 		// 16 bit loads
 		case 0x01: CPU_16BIT_LOAD( reg_BC.reg ) ; return 16 ; break ;
@@ -118,16 +118,36 @@ int Emulator::ExecuteOpcode(BYTE opcode)
 		case 0xF9: stack_Pointer.reg = reg_HL.reg ; return 8 ; break ;
 
 		// push word onto stack
-		case 0xF5: PushWordOntoStack( reg_AF.reg ) ; return 16 ; break ;
-		case 0xC5: PushWordOntoStack( reg_BC.reg ) ; return 16 ; break ;
-		case 0xD5: PushWordOntoStack( reg_DE.reg ) ; return 16 ; break ;
-		case 0xE5: PushWordOntoStack( reg_HL.reg ) ; return 16 ; break ;
+		case 0xF5: 
+		std::cout << "Pushing contents AF to stack" << std::endl;
+		PushWordToStack( reg_AF.reg ) ; return 16 ; break ;
+		case 0xC5:
+		std::cout << "Pushing contents BC to stack" << std::endl; 
+		PushWordToStack( reg_BC.reg ) ; return 16 ; break ;
+		case 0xD5: 
+		std::cout << "Pushing contents DE to stack" << std::endl;
+		PushWordToStack( reg_DE.reg ) ; return 16 ; break ;
+		case 0xE5: 
+		std::cout << "Pushing contents HL to stack" << std::endl;
+		PushWordToStack( reg_HL.reg ) ; return 16 ; break ;
 
 		// pop word from stack into reg
-		case 0xF1: reg_AF.reg = PopWordOffStack( ) ; return 12 ; break ;
-		case 0xC1: reg_BC.reg = PopWordOffStack( ) ; return 12 ; break ;
-		case 0xD1: reg_DE.reg = PopWordOffStack( ) ; return 12 ; break ;
-		case 0xE1: reg_HL.reg = PopWordOffStack( ) ; return 12 ; break ;
+		case 0xF1:
+		std::cout << "Popping contents from stack into AF" << std::endl; 
+		if(program_Counter == 0xC31F && reg_AF.reg == 0)
+		{	
+			printHex("Before executing instruction. DFFB: ", readByte(0xDFFB));
+		}
+		reg_AF.reg = PopWordOffStack( ) ; return 12 ; break ;
+		case 0xC1: 
+		std::cout << "Popping contents from stack into BC" << std::endl;
+		reg_BC.reg = PopWordOffStack( ) ; return 12 ; break ;
+		case 0xD1: 
+		std::cout << "Popping contents from stack into DE" << std::endl;
+		reg_DE.reg = PopWordOffStack( ) ; return 12 ; break ;
+		case 0xE1: 
+		std::cout << "Popping contents from stack into HL" << std::endl;
+		reg_HL.reg = PopWordOffStack( ) ; return 12 ; break ;
 
 		// 8-bit add
 		case 0x87: CPU_8BIT_ADD(reg_AF.hi, reg_AF.hi,false,false) ; return 4 ; break ;
@@ -278,11 +298,11 @@ int Emulator::ExecuteOpcode(BYTE opcode)
 		case 0xDC : CPU_CALL( true, FLAG_C, true) 		; return 12; break ;
 
 		// returns
-		case 0xC9: CPU_RETURN( false, 0, false ) 		; return 8; break ;
-		case 0xC0: CPU_RETURN( true, FLAG_Z, false ) 	; return 8; break ;
-		case 0xC8: CPU_RETURN( true, FLAG_Z, true ) 	; return 8; break ;
-		case 0xD0: CPU_RETURN( true, FLAG_C, false ) 	; return 8; break ;
-		case 0xD8: CPU_RETURN( true, FLAG_C, true ) 	; return 8; break ;
+		case 0xC9: CPU_RETURN( false, 0, false ) 		; return 8 ; break ;
+		case 0xC0: CPU_RETURN( true, FLAG_Z, false ) 	; return 8 ; break ;
+		case 0xC8: CPU_RETURN( true, FLAG_Z, true ) 	; return 8 ; break ;
+		case 0xD0: CPU_RETURN( true, FLAG_C, false ) 	; return 8 ; break ;
+		case 0xD8: CPU_RETURN( true, FLAG_C, true ) 	; return 8 ; break ;
 
 
 		// restarts
@@ -302,10 +322,10 @@ int Emulator::ExecuteOpcode(BYTE opcode)
 		case 0xCB: return ExecuteExtendedOpcode( ) ; break ;
 
 		// Rotation Instructions
-		case 0x07:CPU_RLC(reg_AF.hi) ; return 4; break ;
-		case 0x0F:CPU_RRC(reg_AF.hi) ; return 4; break ;
-		case 0x17:CPU_RL(reg_AF.hi)  ; return 4; break ;
-		case 0x1F:CPU_RR(reg_AF.hi)  ; return 4; break ;
+		case 0x07:CPU_RLC(reg_AF.hi, true) ; return 4; break ;
+		case 0x0F:CPU_RRC(reg_AF.hi, true) ; return 4; break ;
+		case 0x17:CPU_RL(reg_AF.hi, true)  ; return 4; break ;
+		case 0x1F:CPU_RR(reg_AF.hi, true)  ; return 4; break ;
 
 		//Pop two bytes, Jump to that address and enable interrupts
 		case 0xD9:
@@ -321,8 +341,8 @@ int Emulator::ExecuteOpcode(BYTE opcode)
 		{
 			WORD word = readWord() ;
 			program_Counter+=2 ;
-			writeMemory(word, stack_Pointer.lo) ;
-			writeMemory((word >> 8), stack_Pointer.hi) ;
+			writeByte((word + 1), stack_Pointer.hi);
+			writeByte(word, stack_Pointer.lo) ;
 			return 20;
 		}break ;
 
@@ -331,7 +351,7 @@ int Emulator::ExecuteOpcode(BYTE opcode)
 		{
 			BYTE n = readByte(program_Counter) ;
 			program_Counter++;
-			WRITE_BYTE(reg_HL.reg, n) ;
+			writeByte(reg_HL.reg, n) ;
 			return 12;
 		}break ;
 
@@ -357,7 +377,7 @@ int Emulator::ExecuteOpcode(BYTE opcode)
 		{
 			WORD nn = readWord( ) ;
 			program_Counter+=2 ;
-			WRITE_BYTE(nn, reg_AF.hi) ;
+			writeByte(nn, reg_AF.hi) ;
 			return 16;
 		}break ;
 
@@ -381,8 +401,38 @@ int Emulator::ExecuteOpcode(BYTE opcode)
 			BYTE n = readByte(program_Counter) ;
 			program_Counter++ ;
 			WORD address = 0xFF00 + n ;
-			WRITE_BYTE(address, reg_AF.hi) ;
+			writeByte(address, reg_AF.hi) ;
 			return 12;
+		}break ;
+
+		//LD SP, n
+		case 0xE8:
+		{
+			SIGNED_BYTE n = (SIGNED_BYTE)readByte(program_Counter);
+			program_Counter++ ;
+			WORD prevValue = stack_Pointer.reg;
+			stack_Pointer.reg += n;
+
+			/*
+			----------------
+				set flags
+			----------------
+			*/
+
+			reg_AF.lo = 0;
+
+			if(((prevValue ^ n ^ (stack_Pointer.reg & 0xFFFF)) & 0x100) == 0x100)
+			{
+				reg_AF.lo = SetBit(reg_AF.lo, FLAG_C);
+			}
+
+			if(((prevValue ^ n ^ (stack_Pointer.reg & 0xFFFF)) & 0x10) == 0x10)
+			{
+				reg_AF.lo = SetBit(reg_AF.lo, FLAG_H);
+			}
+
+			return 16;
+
 		}break ;
 
         //LDH A,n
@@ -443,26 +493,23 @@ int Emulator::ExecuteOpcode(BYTE opcode)
 		{
 			SIGNED_BYTE n = readByte(program_Counter) ;
 			program_Counter++ ;
-			reg_AF.lo = ResetBit(reg_AF.lo, FLAG_Z);
-			reg_AF.lo = ResetBit(reg_AF.lo, FLAG_N);
+			reg_AF.lo = 0;
 
-
-			WORD value = (stack_Pointer.reg + n) & 0xFFFF;
-
-			reg_HL.reg = value ;
+			reg_HL.reg = stack_Pointer.reg + n ;
 			unsigned int v = stack_Pointer.reg + n ;
 
 			//overflow imminent if n is greater than 0xFFFF
-			if( v > 0xFFFF )
-				reg_AF.lo = SetBit(reg_AF.lo,FLAG_C) ;
-			else
-				reg_AF.lo = ResetBit(reg_AF.lo,FLAG_C) ;
+			//set C flag
+			if(((stack_Pointer.reg ^ n ^ (reg_HL.reg & 0xFFFF)) & 0x100) == 0x100)
+			{
+				reg_AF.lo = SetBit(reg_AF.lo, FLAG_C);
+			}
 
-			//half overflow imminent
-			if( (stack_Pointer.reg & 0xF) + (v & 0xF) > 0xF )
-				reg_AF.lo = SetBit(reg_AF.lo,FLAG_H) ;
-			else
-				reg_AF.lo = ResetBit(reg_AF.lo,FLAG_H) ;
+			//Set H Flag
+			if(((stack_Pointer.reg ^ n ^ (reg_HL.reg & 0xFFFF)) & 0x10) == 0x10)
+			{
+				reg_AF.lo = SetBit(reg_AF.lo, FLAG_H);
+			}			
 
 			return 12;
 		}break ;
@@ -491,7 +538,7 @@ int Emulator::ExecuteOpcode(BYTE opcode)
 				std::snprintf(errormsg, sizeof(errormsg), "Not enough space, Increase the space for buffer");
 				LogMessage::getLogMsgInstance()->writeToLog(errormsg);
 			}
-			assert(false) ;
+			// assert(false) ;
 		} break;
 	}
 
@@ -532,44 +579,45 @@ int Emulator::ExecuteExtendedOpcode( )
 	switch(opcode)
 	{
 		// rotate left through carry
-  		case 0x0 : CPU_RLC(reg_BC.hi) ; return 8 ; break ;
-  		case 0x1 : CPU_RLC(reg_BC.lo) ; return 8 ; break ;
-  		case 0x2 : CPU_RLC(reg_DE.hi) ; return 8 ; break ;
-  		case 0x3 : CPU_RLC(reg_DE.lo) ; return 8 ; break ;
-  		case 0x4 : CPU_RLC(reg_HL.hi) ; return 8 ; break ;
-  		case 0x5 : CPU_RLC(reg_HL.lo) ; return 8 ; break ;
+  		case 0x0 : CPU_RLC(reg_BC.hi, false) ; return 8 ; break ;
+  		case 0x1 : CPU_RLC(reg_BC.lo, false) ; return 8 ; break ;
+  		case 0x2 : CPU_RLC(reg_DE.hi, false) ; return 8 ; break ;
+  		case 0x3 : CPU_RLC(reg_DE.lo, false) ; return 8 ; break ;
+  		case 0x4 : CPU_RLC(reg_HL.hi, false) ; return 8 ; break ;
+  		case 0x5 : CPU_RLC(reg_HL.lo, false) ; return 8 ; break ;
   		case 0x6 : CPU_RLC_MEMORY(reg_HL.reg) ; return 16 ; break ;
-  		case 0x7 : CPU_RLC(reg_AF.hi) ; return 8; break ;
+		//Work slightly different. For some reason CB does not care if register modifying is A
+  		case 0x7 : CPU_RLC(reg_AF.hi, false) ; return 8; break ;
 
   		// rotate right through carry
-  		case 0x8 : CPU_RRC(reg_BC.hi) ; return 8 ; break ;
-  		case 0x9 : CPU_RRC(reg_BC.lo) ; return 8 ; break ;
-  		case 0xA : CPU_RRC(reg_DE.hi) ; return 8 ; break ;
-  		case 0xB : CPU_RRC(reg_DE.lo) ; return 8 ; break ;
-  		case 0xC : CPU_RRC(reg_HL.hi) ; return 8 ; break ;
-  		case 0xD : CPU_RRC(reg_HL.lo) ; return 8 ; break ;
+  		case 0x8 : CPU_RRC(reg_BC.hi, false) ; return 8 ; break ;
+  		case 0x9 : CPU_RRC(reg_BC.lo, false) ; return 8 ; break ;
+  		case 0xA : CPU_RRC(reg_DE.hi, false) ; return 8 ; break ;
+  		case 0xB : CPU_RRC(reg_DE.lo, false) ; return 8 ; break ;
+  		case 0xC : CPU_RRC(reg_HL.hi, false) ; return 8 ; break ;
+  		case 0xD : CPU_RRC(reg_HL.lo, false) ; return 8 ; break ;
   		case 0xE : CPU_RRC_MEMORY(reg_HL.reg) ; return 16 ; break ;
-  		case 0xF : CPU_RRC(reg_AF.hi) ; return 8; break ;
+  		case 0xF : CPU_RRC(reg_AF.hi, false) ; return 8; break ;
 
   		// rotate left
-  		case 0x10: CPU_RL(reg_BC.hi) ; return 8 ; break;
-  		case 0x11: CPU_RL(reg_BC.lo) ; return 8 ; break;
-	  	case 0x12: CPU_RL(reg_DE.hi) ; return 8 ; break;
-  		case 0x13: CPU_RL(reg_DE.lo) ; return 8 ; break;
-  		case 0x14: CPU_RL(reg_HL.hi) ; return 8 ; break;
-  		case 0x15: CPU_RL(reg_HL.lo) ; return 8 ; break;
+  		case 0x10: CPU_RL(reg_BC.hi, false) ; return 8 ; break;
+  		case 0x11: CPU_RL(reg_BC.lo, false) ; return 8 ; break;
+	  	case 0x12: CPU_RL(reg_DE.hi, false) ; return 8 ; break;
+  		case 0x13: CPU_RL(reg_DE.lo, false) ; return 8 ; break;
+  		case 0x14: CPU_RL(reg_HL.hi, false) ; return 8 ; break;
+  		case 0x15: CPU_RL(reg_HL.lo, false) ; return 8 ; break;
   		case 0x16: CPU_RL_MEMORY(reg_HL.reg) ; return 16 ; break;
-  		case 0x17: CPU_RL(reg_AF.hi) ; return 8 ; break;
+  		case 0x17: CPU_RL(reg_AF.hi, false) ; return 8 ; break;
 
   		// rotate right
-  		case 0x18: CPU_RR(reg_BC.hi) ; return 8 ; break;
-  		case 0x19: CPU_RR(reg_BC.lo) ; return 8 ; break;
-  		case 0x1A: CPU_RR(reg_DE.hi) ; return 8 ; break;
-  		case 0x1B: CPU_RR(reg_DE.lo) ; return 8 ; break;
-  		case 0x1C: CPU_RR(reg_HL.hi) ; return 8 ; break;
-  		case 0x1D: CPU_RR(reg_HL.lo) ; return 8 ; break;
+  		case 0x18: CPU_RR(reg_BC.hi, false) ; return 8 ; break;
+  		case 0x19: CPU_RR(reg_BC.lo, false) ; return 8 ; break;
+  		case 0x1A: CPU_RR(reg_DE.hi, false) ; return 8 ; break;
+  		case 0x1B: CPU_RR(reg_DE.lo, false) ; return 8 ; break;
+  		case 0x1C: CPU_RR(reg_HL.hi, false) ; return 8 ; break;
+  		case 0x1D: CPU_RR(reg_HL.lo, false) ; return 8 ; break;
   		case 0x1E: CPU_RR_MEMORY(reg_HL.reg) ; return 16 ; break;
-  		case 0x1F: CPU_RR(reg_AF.hi) ; return 8 ; break;
+  		case 0x1F: CPU_RR(reg_AF.hi, false) ; return 8 ; break;
 
   		case 0x20 : CPU_SLA( reg_BC.hi ) ; return 8 ; break ;
   		case 0x21 : CPU_SLA( reg_BC.lo ) ; return 8 ; break ;

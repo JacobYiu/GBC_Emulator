@@ -1,5 +1,59 @@
 #include "Emulator.h"
 #include "utils.h"
+#include "LogMessage.h"
+
+void Emulator::debugStorageMemory(BYTE array[], int startingPt, int count)
+{
+    for(int i = 0; i < count; i++)
+    {
+        BYTE curAscii = array[startingPt + i];
+        int curInt = static_cast<int>(curAscii); 
+        std:: cout << "Internal Memory at address: " << std::hex << (startingPt + i) << " is " << std::hex << std::uppercase << curInt << std::endl;
+    }
+}
+
+BYTE Emulator::findDataInMemory(BYTE dataToFind)
+{
+    for(int address = 0; address < MaxInternalMemory; address++)
+    {
+        if(readByte(address) == dataToFind)
+        {
+            printHex("Found data at address ", address);
+        }
+    }
+}
+
+void Emulator::testRegisterLog()
+{
+    std::ostringstream oss;
+    oss 
+    << convertHex("A:", reg_AF.hi, false) << " " << convertHex("F:", reg_AF.lo, false)
+    << " " << convertHex("B:", reg_BC.hi, false) << " " << convertHex("C:", reg_BC.lo, false) 
+    << " " << convertHex("D:", reg_DE.hi, false) << " " << convertHex("E:", reg_DE.lo, false)
+    << " " << convertHex("H:", reg_HL.hi, false) << " " << convertHex("L:", reg_HL.lo, false)
+    << " " << convertHex("SP:", stack_Pointer.reg, true) << " " << convertHex("PC:", program_Counter, true)
+    << " "
+    << convertHex("PCMEM:", readByte(program_Counter), false) 
+    << convertHex(",", readByte(program_Counter + 1), false) 
+    << convertHex(",", readByte(program_Counter + 2), false) 
+    << convertHex(",", readByte(program_Counter + 3), false); 
+
+    std::string msg = oss.str();
+
+
+    std::ofstream logFile("opcode.log", std::ofstream::app);
+
+    if(!logFile.is_open())
+    {
+        std::cerr << "Error opening or creating the file" << std::endl;
+        return;
+    }
+
+    logFile << msg;
+    logFile << "\n";
+
+    logFile.close();
+}
 
 bool Emulator::initEmulator(RenderScreenFunc func)
 {
@@ -8,22 +62,65 @@ bool Emulator::initEmulator(RenderScreenFunc func)
 }
 
 void Emulator::PushWordToStack(WORD dataToPush)
-{
-    //Just to make sure you are not overwriting any data that is not part of the stack
-    if(stack_Pointer.reg > 0xFF80 && stack_Pointer.reg <= 0xFFFE)
+{   
+    if(program_Counter == 0xC31E && reg_AF.lo == 0)
     {
-        internal_Memory[stack_Pointer.reg] = dataToPush;
-        stack_Pointer.reg = stack_Pointer.reg - 1; //Decrement stack pointer register
+        printHex("register BC is ", reg_BC.reg);
+        printHex("At program_Counter 0xC31E, 0xDFFB is ", readByte(0xDFFB));
     }
+    BYTE topByte = dataToPush >> 8;
+    BYTE bottomByte = dataToPush & 0xFF;
+    stack_Pointer.reg --; //Decrement stack pointer register
+    writeByte(stack_Pointer.reg, topByte);
+    stack_Pointer.reg --; //Decrement stack pointer register
+    writeByte(stack_Pointer.reg, bottomByte);  
+}
+
+WORD Emulator::PopWordOffStack()
+{
+    if(program_Counter == 0xC31F && reg_AF.reg == 0)
+    {	
+        printHex("Before reading topByte. DFFB: ", readByte(0xDFFB));
+    }
+    int topByte = readByte(stack_Pointer.reg + 1);
+    if(program_Counter == 0xC31F && reg_AF.reg == 0)
+    {	
+        printHex("Before reading bottomByte. DFFB: ", readByte(0xDFFB));
+    }    
+    int bottomByte = readByte(stack_Pointer.reg);
+    if(program_Counter == 0xC31F && reg_AF.reg == 0)
+    {
+        printHex("topbyte is", topByte);
+        printHex("bottombyte is", bottomByte);
+    }
+    
+    stack_Pointer.reg += 2;
+
+    topByte = topByte << 8;
+    WORD finalWord = topByte | bottomByte;
+    if(program_Counter == 0xC31F && reg_AF.reg == 0)
+    {
+        printHex("Ending function for popping stack. The final value is ", finalWord);
+    }
+    return finalWord;
+}
+
+WORD Emulator::readWord()
+{
+    WORD data2 = readByte(program_Counter + 1);
+    data2 = data2 << 8;
+    WORD data1 = readByte(program_Counter);
+    WORD finalData = data2 | data1;
+    return finalData;
 }
 
 bool Emulator::restartCPU()
 {
     program_Counter = 0x100;
     reg_AF.reg = 0x01B0;
-    reg_BC.reg =0x0013;
-    reg_DE.reg =0x00D8;
-    reg_HL.reg =0x014D;
+    reg_BC.reg = 0x0013;
+    reg_DE.reg = 0x00D8;
+    reg_HL.reg = 0x014D;
     stack_Pointer.reg = 0xFFFE;
     internal_Memory[0xFF05] = 0x00 ;
     internal_Memory[0xFF06] = 0x00 ;
@@ -62,6 +159,8 @@ bool Emulator::restartCPU()
     memset(external_RAM_BANK_Memory, 0, sizeof(external_RAM_BANK_Memory)); //Set external RAM bank to 0 
 
     enableRAMBanking = false;
+    set_ROM_BANKING_CONTROLLER();
+
     timerCounter = 1024; //Clockspeed/frequency(TMC). Completes 1024 clock cycles in a second 
 
     masterInterrupt = true;
@@ -89,6 +188,10 @@ bool Emulator::loadCartridge(std::string GameName)
     }
 
     inFile.read(reinterpret_cast<char*>(Cartridge_Memory), MaxCartridgeMemory); //Read from Cartridge into Console Cartrdige memory.
+    memset(internal_Memory, 0, sizeof(internal_Memory));
+    std::copy(Cartridge_Memory, Cartridge_Memory + 8000, internal_Memory);
+    
+    debugStorageMemory(Cartridge_Memory, 0xDF7E, 4);
 
     inFile.close();
 
@@ -96,15 +199,25 @@ bool Emulator::loadCartridge(std::string GameName)
 }
 
 //Writing to memory
-bool Emulator::writeMemory(WORD address, BYTE data)
+bool Emulator::writeByte(WORD address, BYTE data)
 {
-    //Memory specifically for the cartridge. You cannot write to it, Only read 
-    if(address <= 0x8000)
+    //Used for the gameboy to write to ROM
+    //Dont forget there is ROM 0 and ROM N
+    //We want to trap anything gameboy writes here to further check what it wants to do 
+    if(address == 0xDFFB && data == 0x1)
     {
+        std::cout << "Start Writing -----------------" << std::endl;
+        printHex("Address is ", address);
+        printHex("Writing data ", data);
+        printHex("Program Counter is ", program_Counter);
+    }
+
+    if(address < 0x8000)
+    {        
         HandleBanking(address, data);
     }
 
-    else if((address >= 0xA000) && (address < 0xC0000))
+    else if((address >= 0xA000) && (address < 0xC000))
     {
         if(enableRAMBanking)
         {
@@ -117,7 +230,7 @@ bool Emulator::writeMemory(WORD address, BYTE data)
     else if(address >= 0xE000 && address <= 0xFDFF)
     {
         internal_Memory[address] = data;
-        writeMemory((address - 0x2000), data);
+        writeByte((address - 0x2000), data);
     }
 
     //Not usable memory address
@@ -146,7 +259,7 @@ bool Emulator::writeMemory(WORD address, BYTE data)
 
     else if(address == scanlineAddr)
     {
-        Cartridge_Memory[0xFF44] = 0;
+        Cartridge_Memory[scanlineAddr] = 0;
     }
 
     else if(address == DMAAddr)
@@ -159,17 +272,24 @@ bool Emulator::writeMemory(WORD address, BYTE data)
         internal_Memory[address] = data;
     }
 
+    if(address == 0xDFFB && data == 0x1)
+    {
+        std::cout << "Finish Writing-----------------" << std::endl;
+    }
+
     return true;
 }
 
 BYTE Emulator::readByte(WORD address) const
-{
-    //Read from switchable ROM banks
-    //Access current ROM bank in Cartridge memory 
+{   
     if(address >= 0x4000 && address <= 0x7FFF)
     {
         WORD newAddress = address - 0x4000;
-        return Cartridge_Memory[newAddress + (current_ROM_BANK * 4000)];  
+
+        WORD addrToAccess = newAddress + (current_ROM_BANK * 0x4000);
+        
+        BYTE data = Cartridge_Memory[addrToAccess];
+        return data;  
     }
 
     //Read from switchable RAM banks
@@ -177,7 +297,8 @@ BYTE Emulator::readByte(WORD address) const
     else if(address >= 0xA000 && address <= 0xBFFF)
     {
         WORD newAddress = address - 0x2000;
-        return external_RAM_BANK_Memory[newAddress + (current_EXT_RAM_BANK * 2000)];
+        // std::cout << "RAM: " << external_RAM_BANK_Memory[newAddress + (current_EXT_RAM_BANK * 2000)] << std::endl;
+        return external_RAM_BANK_Memory[newAddress + (current_EXT_RAM_BANK * 0x2000)];
     }
 
     else if(address == joypadAddr)
@@ -185,19 +306,16 @@ BYTE Emulator::readByte(WORD address) const
         return GetJoypadState();
     }
 
+    // //debug purposes
+    else if(address == scanlineAddr)
+    {
+        return 0x90;
+    }
+
     else
     {
         return internal_Memory[address];
     }
-}
-
-WORD Emulator::readWord()
-{
-    WORD data2 = readByte(program_Counter + 1);
-    data2 <<= 8;
-    WORD data1 = readByte(program_Counter);
-    WORD finalData = data2 | data1;
-    return finalData;
 }
 
 //--------------------------------------------------------------------------------------------------------
@@ -209,8 +327,8 @@ void Emulator::set_ROM_BANKING_CONTROLLER()
     MBC2_set = false;
 
     //If both are false, then the game is small enough to not use any ROM banking.
-    //Different MBC control different ROM bankings
-    //Not sure which ROM bankings are assigned though because of lacks of docs regarding this data
+    //Different MBC control different numebr of ROM bankings
+    //MBC1 is bigger than MBC2 based on the docs given
     switch(Cartridge_Memory[0x147])
     {
         case 1: MBC1_set = true; break;
@@ -220,8 +338,13 @@ void Emulator::set_ROM_BANKING_CONTROLLER()
         case 6: MBC2_set = true; break;
         default: break;
     }
+
+    std::cout << "MBC1_set is " << MBC1_set << std::endl;
+    std::cout << "MBC2_set is " << MBC2_set << std::endl;
 }
 
+//There are 4 different banking registers
+//Each is 2 ^ 13 in size
 void Emulator::HandleBanking(WORD address, BYTE data)
 {   
     //RAM enabling
@@ -245,6 +368,7 @@ void Emulator::HandleBanking(WORD address, BYTE data)
     //Change ROM or RAM bank
     else if((address >= 0x4000) & (address < 0x6000))
     {
+        std::cout << "Changing ROM/RAM banking" << std::endl;
         //There is no RAM banking when MBC2 is set, so set ram banking to 0 and by default chooses ROM banking
         if(MBC1_set)
         {
@@ -287,7 +411,7 @@ void Emulator::DoRamBankEnable(WORD address, BYTE data)
         }
     }
 
-    BYTE lowerNibble = data & 0x0F;     //Check the lowerNibble and check if its equal to 0xA
+    BYTE lowerNibble = data & 0xF;     //Check the lowerNibble and check if its equal to 0xA
 
     if(lowerNibble == 0xA)
     {
@@ -326,6 +450,7 @@ void Emulator::changeLoROMBank(BYTE data)
 }
 
 //Used to change ROM banks when writing to memory address 0x4000 - 0x6FFF
+//We dont really care if MBC2 is set or not, either way we maintain the lower 5 bits
 void Emulator::changeHiROMBank(BYTE data)
 {
     BYTE upper3 = data & 0xE0; //AND bits 5-7
@@ -389,13 +514,13 @@ void Emulator::updateTimers(int cycles)
 
             if(readByte(TIMA) == 255)
             {
-                writeMemory(TIMA, readByte(TMA));
+                writeByte(TIMA, readByte(TMA));
                 RequestInterrupt(2);
             }
 
             else
             {
-                writeMemory(TIMA, readByte(TIMA) + 1);
+                writeByte(TIMA, readByte(TIMA) + 1);
             }
         }
     }
@@ -469,7 +594,7 @@ void Emulator::RequestInterrupt(int id)
     BYTE req = readByte(0xFF05);
     BYTE bitToSet = (0b1 << id);
     req = req | bitToSet;
-    writeMemory(0xFF05, req);
+    writeByte(0xFF05, req);
 }
 
 void Emulator::DoInterrupts()
@@ -505,7 +630,7 @@ void Emulator::ServiceInterrupt(BYTE interruptBit)
     //Turn off the bit corresponding to the interrupt because it is going to be serviced 
     BYTE data = readByte(0xFF0F);
     data = ResetBit(data, interruptBit);
-    writeMemory(0xFF0F, data);
+    writeByte(0xFF0F, data);
 
     PushWordToStack(program_Counter);
 
@@ -577,7 +702,7 @@ void Emulator::updateGraphics(int cycles)
     //if scanlineCounter <= 0, time to move on to the next scanline
     if(scanlineCounter <= 0)
     {
-        Cartridge_Memory[scanlineAddr]++;
+        internal_Memory[scanlineAddr]++;
         int currentline = readByte(scanlineAddr);
         scanlineCounter = 456;
         //if currentScanline is 144 then its time to turn on V-Blank Interrupts
@@ -590,7 +715,7 @@ void Emulator::updateGraphics(int cycles)
         //This new frame will start from scanline 0 
         else if(currentline > 153)
         {
-            Cartridge_Memory[scanlineAddr] = 0; //Cannot use writeMemory it resets scanline to 0 
+            Cartridge_Memory[scanlineAddr] = 0; //Cannot use writeByte it resets scanline to 0 
         }
 
         else if(currentline < 144)
@@ -611,10 +736,10 @@ void Emulator::setLCDStatus()
     {
         //Set scalineCounter to 456, scanlineNumber to 0, lcdStatus to mode 1(0bxxxxxx01)
         scanlineCounter = 456;
-        Cartridge_Memory[scanlineAddr] = 0;
+        internal_Memory[scanlineAddr] = 0;
         lcdStatus &= 252; 
         lcdStatus = SetBit(lcdStatus, 0);
-        writeMemory(LCDStatusAddr, lcdStatus);
+        writeByte(LCDStatusAddr, lcdStatus);
     }
     
     //Checking for mode change ---------------------------------------------
@@ -693,7 +818,7 @@ void Emulator::setLCDStatus()
         lcdStatus = ResetBit(lcdStatus, 2);
     }
 
-    writeMemory(LCDStatusAddr, lcdStatus);
+    writeByte(LCDStatusAddr, lcdStatus);
 }
 
 bool Emulator::IsLCDEnabled() const
@@ -712,9 +837,11 @@ Memory Mapping:
 
 //The DMA is used to copy data to the sprite RAM
 /*
+0xFF46 is not important in this implementation. Its important to run this particular funcition
 Since the sprite RAM has a total of 0xA0
-We want to try and copy the all the data in the source address represented by data << 8
-However, there are multiple bytes, so we have to copy each of them in a for loop
+We need to transfer data from a source address to the Sprite RAM address
+This source address is the data * 100
+Since there is a loop, we increment both by i to transfer data accordingly
 */
 //--------------------------------------------------------------------------------------------------------
 
@@ -723,7 +850,7 @@ void Emulator::DMATransfer(BYTE data)
     BYTE address = data << 8; //Equivalent to doing data * 100
     for(int i = 0; i < 0xA0; i++)
     {
-        writeMemory(0xFE00+i, readByte(address+i));
+        writeByte(0xFE00+i, readByte(address+i));
     }
 }
 
@@ -813,7 +940,7 @@ Since each tile is 8x8 pixels
 One horizontal line in the tile takes up 2 bytes
 Since there are 8 horizontal lines, there are a total of 16 bytes
 
-To represent 1 line, we would need 2 bytes. So that means we need to combine these bytes as such
+To represent 1 line, we would need 2 bytes. So that means we need to combine these bytes as such to form a color
 pixel# = 1 2 3 4 5 6 7 8
 data 2 = 1 0 1 0 1 1 1 0
 data 1 = 0 0 1 1 0 1 0 1
@@ -963,14 +1090,15 @@ void Emulator::renderTiles()
 
     else
     {
-        
         yPos = readByte(scanlineAddr) - windowYPos; 
     }
 
-    //Which of 8 pixels within a tile is the scanline currently on?   
+    //Which of 8 pixels within a column is the scanline currently on?   
     WORD tileRow = (((BYTE)yPos/8) * 32);
 
-    //Now that we know which specific pixel, we need to calculate 160 vertical pixels
+    // std::cout << "tile row number is " << tileRow << std::endl;
+
+    //Now that we know which specific row, we need to calculate the pixels in that row
     for (int pixel = 0; pixel < 160; pixel++)
     {
         BYTE xPos = pixel + viewingAreaXPos;
@@ -987,15 +1115,20 @@ void Emulator::renderTiles()
         WORD tileCol = (xPos/8);
         SIGNED_WORD tileNum;
 
-        WORD tileAddr = tileIdMemory + tileCol + tileRow;
+        WORD tileNumAddr = tileIdMemory + tileCol + tileRow;
+
+        // std::cout << "printing out values for tileNumAddr " << tileNumAddr << std::endl;
+
         if(unsig)
         {
-            tileNum = (BYTE) readByte(tileAddr);  
+            tileNum = (BYTE) readByte(tileNumAddr);  
         }
         else
         {
-            tileNum = (SIGNED_BYTE) readByte(tileAddr);
+            tileNum = (SIGNED_BYTE) readByte(tileNumAddr);
         }
+
+        // std::cout << "printing out values for tileNum " << tileNum << std::endl;
 
         SIGNED_WORD tileLocationAddr;
 
@@ -1013,6 +1146,8 @@ void Emulator::renderTiles()
         BYTE line = yPos % 8;
         //Multiply by 2 since a line is 2 bytes
         line *= 2; 
+
+        // std::cout << "printing out values for tileLocationAddr " << tileLocationAddr << std::endl;
 
         BYTE line1 = readByte(tileLocationAddr + line);
         BYTE line2 = readByte(tileLocationAddr + line + 1);
@@ -1046,15 +1181,44 @@ void Emulator::renderTiles()
         int scanlineCheck = readByte(scanlineAddr);
 
         //safety check to make sure the pixel I am drawing is within the 160x144 bounds
-        if((scanlineCheck < 0) | (scanlineCheck > 143) | (pixel < 0) | (pixel < 159) )
+        if((scanlineCheck < 0) | (scanlineCheck > 143) | (pixel < 0) | (pixel > 159) )
         {
             continue;
+        }
+
+        // std::cout << "Checking Scanline value " << scanlineCheck << std::endl;
+        // std::cout << "Pixel Check " << pixel << std::endl;
+
+        // std::cout << "Updating Screen Display Values" << std::endl;
+        // std::cout << "red: " << red << std::endl;
+        // std::cout << "green: " << green << std::endl;
+        // std::cout << "blue: " << blue << std::endl;
+        if(scanlineCheck == 144)
+        {
+            std::cout << "Testing Max visible scanline successful " << scanlineCheck << std::endl;
         }
 
         screen_Display[scanlineCheck][pixel][0] = red;
         screen_Display[scanlineCheck][pixel][1] = green;
         screen_Display[scanlineCheck][pixel][2] = blue;
+    }
 
+    if(program_Counter == 0x207)
+    {
+        // for(int x = 0; x < 160; x++)
+        // {
+        //     for (int y = 0; y < 144; y++)
+        //     {
+        //         for(int color = 0; color < 3; color++)
+        //         {
+        //             std::stringstream ss;
+        //             ss << std::hex << std::uppercase << static_cast<int>(screen_Display[x][y][color]);
+        //             std::string value = ss.str(); 
+        //             std::string msg = "value at " + std::to_string(x) + " " + std::to_string(y) + " is " + value;
+        //             std:: cout << msg << std::endl;
+        //         }
+        //     }
+        // }
     }
 }
 
@@ -1094,9 +1258,9 @@ void Emulator::renderSprites()
         }    
 
         //checks if scanline should render the sprite or not
+        //relative to display screen
         if((scanline >= spriteYPos) && (scanline <= (spriteYPos + ySize)))
         {
-            
             BYTE line = scanline - spriteYPos;
 
             //We read the the data backwards
@@ -1107,9 +1271,9 @@ void Emulator::renderSprites()
             }
             //A horizontal line takes 2 bytes
             line *= 2;
-            WORD spriteMemory = 0x8000 + (spriteIdentifier * 16);
-            BYTE line1 = readByte(spriteMemory + line);
-            BYTE line2 = readByte(spriteMemory + line + 1);
+            WORD spriteMemory = 0x8000 + ((spriteIdentifier * 16) + line);
+            BYTE line1 = readByte(spriteMemory);
+            BYTE line2 = readByte(spriteMemory + 1);
 
 
             //Easier to read from right to left
@@ -1128,6 +1292,11 @@ void Emulator::renderSprites()
 
                 WORD spritePaletteAddr = (TestBit(spriteData, 4) == 1)? SpritePallete1Addr:SpritePallete2Addr; 
                 COLOR col = GetColor(colorNum, spritePaletteAddr);
+
+                if(col == WHITE)
+                {
+                    continue;
+                }
 
                 int red = 0;
                 int green = 0;
@@ -1180,10 +1349,13 @@ Emulator::COLOR Emulator::GetColor(int colorNum, WORD palette_Address) const
         case 1: hi = 3; lo = 2; break;
         case 2: hi = 5; lo = 4; break;
         case 3: hi = 7; lo = 6; break;
+        default: 
+            std::cout << "No known color bits" << std::endl;
+            assert(false);
     }
 
-    int firstBit = BitGetVal(pallete, lo) << 1;
-    int secondBit = BitGetVal(pallete, hi);
+    int firstBit = BitGetVal(pallete, hi) << 1;
+    int secondBit = BitGetVal(pallete, lo);
     
     int paletteNum = firstBit | secondBit;
 
@@ -1193,6 +1365,9 @@ Emulator::COLOR Emulator::GetColor(int colorNum, WORD palette_Address) const
         case 1: colorRes = LIGHT_GRAY; break;
         case 2: colorRes = DARK_GRAY; break;
         case 3: colorRes = BLACK; break;
+        default: 
+            std::cout << "No known color resolutions" << std::endl;
+            assert(false);
     }
 
     return colorRes;
@@ -1267,7 +1442,7 @@ void Emulator::keyPressed(int key)
         requestInterrupt = true;
     }
 
-    if(requestInterrupt && keyPrevSet)
+    if(requestInterrupt && !keyPrevSet)
     {
         RequestInterrupt(4);
     }
@@ -1277,7 +1452,6 @@ void Emulator::keyPressed(int key)
 void Emulator::keyReleased(int key)
 {
     joypadKeyState = SetBit(joypadKeyState, key);
-
 }
 
 
@@ -1317,6 +1491,12 @@ int Emulator::ExecuteNextOpcode()
     {
         int retVal = 0;
         BYTE opcode = readByte(program_Counter);
+        // printHex("Printing program counter ", program_Counter);
+        // if(program_Counter == 0xC31E)
+        // {
+        //     printHex("Opcode at 0xC31D is ", readByte(0xC31D));
+        //     assert(false);
+        // }
         program_Counter ++;
         retVal = ExecuteOpcode(opcode);
         return retVal;        
@@ -1345,7 +1525,7 @@ int Emulator::ExecuteNextOpcode()
         if(readByte(program_Counter - 1) != 0xFB)
         {
             //Set to false because it has done its job of setting masterInterrupt on
-            pendingInteruptDisabled = false;
+            pendingInteruptDisabled = false ;
             masterInterrupt = true;
         }
     }
@@ -1354,11 +1534,13 @@ int Emulator::ExecuteNextOpcode()
 
 void Emulator::Update()
 {
+    // std::cout << "Update called " << std::endl; 
     const int maxCycles = 69905;        //Synchronize the gameboy clock timer and graphics emulation by dividing the number of clock cycles executed per second with frame rate per second
     cyclesThisUpdate = 0;           //Track clock cycles
 
     while(cyclesThisUpdate < maxCycles)
     {
+        testRegisterLog();
         int cycles = ExecuteNextOpcode();
         cyclesThisUpdate += cycles;
         updateTimers(cycles);
